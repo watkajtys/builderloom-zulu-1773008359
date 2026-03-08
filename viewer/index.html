@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loom Observer Dashboard</title>
+    <title>Zulu Stealth Command</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: #f8fafc; }
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
@@ -37,7 +39,7 @@
             const [isSteering, setIsSteering] = useState(false);
             const [isShuttingDown, setIsShuttingDown] = useState(false);
             const [steerNote, setSteerNote] = useState("");
-            const [viewMode, setViewMode] = useState("kanban"); // "history" | "kanban"
+            const [activeTab, setActiveTab] = useState("telemetry"); // "telemetry" | "health" | "kanban" | "roadmap"
             const [logFilter, setLogFilter] = useState("all"); // "all" | "error" | "jules" | "brain"
             const [expandedIters, setExpandedIters] = useState({});
             
@@ -160,10 +162,10 @@
             }, [state?.live_logs]);
 
             useEffect(() => {
-                if (viewMode === 'history' && !isScrolledUpMain.current && mainContainerRef.current) {
+                if (activeTab === 'roadmap' && !isScrolledUpMain.current && mainContainerRef.current) {
                     mainContainerRef.current.scrollTop = mainContainerRef.current.scrollHeight;
                 }
-            }, [state, viewMode]);
+            }, [state, activeTab]);
 
             const toggleIter = (iterId) => {
                 setExpandedIters(prev => ({ ...prev, [iterId]: !prev[iterId] }));
@@ -261,7 +263,7 @@
                         <div className="flex items-center gap-8">
                             <div>
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">BuilderLoom</h1>
+                                    <h1 className="text-xl font-black text-white font-sans uppercase tracking-widest flex items-center gap-2"><span className="text-rose-600">ZULU</span> STEALTH COMMAND</h1>
                                     <a href={`${window.location.protocol}//${window.location.hostname}:8090/_/`} target="_blank" className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono hover:bg-amber-500/20 transition-all flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
                                         DATABASE SOUL
@@ -295,12 +297,17 @@
                                 </span>
                                 OPEN LIVE APP
                             </a>
-                            <button 
-                                onClick={() => setViewMode(v => v === 'kanban' ? 'history' : 'kanban')}
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2"
-                            >
-                                {viewMode === 'kanban' ? 'VIEW HISTORY' : 'VIEW KANBAN'}
-                            </button>
+                            <div className="flex bg-slate-900 border border-slate-800 rounded-lg overflow-hidden font-mono text-xs">
+                                {['telemetry', 'health', 'kanban', 'roadmap'].map(tab => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`px-4 py-2 uppercase font-bold transition-colors ${activeTab === tab ? 'bg-slate-800 text-white border-b-2 border-rose-600' : 'text-slate-500 hover:bg-slate-800/50 hover:text-slate-300'}`}
+                                    >
+                                        {tab}
+                                    </button>
+                                ))}
+                            </div>
                             <button 
                                 onClick={() => setIsSteering(true)}
                                 className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 group"
@@ -334,8 +341,8 @@
                         </div>
                     </header>
 
-                    <div className="flex-1 overflow-y-auto w-full" onScroll={(e) => { isScrolledUpMain.current = e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight > 100; }} ref={mainContainerRef}>
-                        {viewMode === 'kanban' ? (
+                    <div className={`flex-1 overflow-y-auto w-full ${activeTab === 'telemetry' ? 'hidden' : ''}`} onScroll={(e) => { isScrolledUpMain.current = e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight > 100; }} ref={mainContainerRef}>
+                        {activeTab === 'kanban' && (
                             <main className="w-[95%] max-w-[1800px] mx-auto p-4 md:p-6 min-h-[calc(100vh-280px)]">
                                 <div className="flex flex-col h-full">
                                     <div className="mb-6 flex justify-between items-end shrink-0">
@@ -412,7 +419,8 @@
                                     </div>
                                 </div>
                             </main>
-                        ) : (
+                        )}
+                        {activeTab === 'roadmap' && (
                         <main className="w-[95%] max-w-[1800px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-8 pb-12">
                             <div className="lg:col-span-1 space-y-6 md:sticky md:top-6 max-h-[calc(100vh-350px)] overflow-y-auto pr-2">
                                 {state.app_meta && (
@@ -425,8 +433,8 @@
                                 )}
                                 {(state.product_phase || state.product_roadmap) && (
                                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 mb-8">
-                                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-                                            Roadmap Phase
+                                        <h2 className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-2">
+                                            Strategic Roadmap
                                         </h2>
                                         {state.product_phase && <div className="text-xs font-bold text-emerald-400 mb-2">{state.product_phase}</div>}
                                         {state.product_roadmap && <p className="text-[10px] text-slate-400 font-mono leading-relaxed whitespace-pre-wrap">{state.product_roadmap}</p>}
@@ -729,9 +737,26 @@
                             </div>
                         </main>
                         )}
+                        {activeTab === 'health' && (
+                            <main className="w-[95%] max-w-[1800px] mx-auto p-4 md:p-6">
+                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl font-mono">
+                                    <h2 className="text-rose-500 font-bold uppercase tracking-widest mb-4">Core System Diagnostics</h2>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="bg-slate-950 p-4 border border-slate-800 rounded">
+                                            <div className="text-slate-500 uppercase text-xs mb-1">Status</div>
+                                            <div className={`font-bold ${state.current_status === 'SHUTDOWN' ? 'text-red-500' : 'text-emerald-400'}`}>{state.current_status || 'UNKNOWN'}</div>
+                                        </div>
+                                        <div className="bg-slate-950 p-4 border border-slate-800 rounded">
+                                            <div className="text-slate-500 uppercase text-xs mb-1">Phase</div>
+                                            <div className="text-white font-bold">{state.current_phase || 'AWAITING'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </main>
+                        )}
                     </div>
 
-                    <div className="h-64 shrink-0 bg-[#0a0a0a] border-t border-slate-800 flex flex-col overflow-hidden">
+                    {activeTab === 'telemetry' && (<div className="flex-1 bg-[#0a0a0a] flex flex-col overflow-hidden m-4 md:m-6 rounded-xl border border-slate-800 shadow-2xl">
                         <div className="px-6 py-2 border-b border-slate-800/50 bg-slate-900/30 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-4">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Logs</span>
@@ -773,7 +798,7 @@
                                 ))}
                             </div>
                         </div>
-                    </div>
+                    </div>)}
                 </div>
             );
         }
