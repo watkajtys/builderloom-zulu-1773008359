@@ -21,3 +21,8 @@ test('Core system interface loads status and handles API boundary', async ({ pag
   // Ensure screenshot is captured
   await page.screenshot({ path: 'evidence.png', fullPage: true });
 });
+
+test('', async ({ page }) => {
+  await page.goto('/');
+  await page.screenshot({ path: 'evidence.png' });
+});
