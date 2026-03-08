@@ -1,0 +1,618 @@
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 3711871..5fc5811 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -48,7 +48,8 @@ test('Trigger an agentic state update and verify the generated state is split in
+   // Trigger state update directly via Python backend to ensure it's generated natively
+   execSync(`python3 -c "from backend.state import ConductorState; state = ConductorState.load(); state.active_task_id = '${dynamicTaskId}'; state.current_status = 'Active'; state.save()"`);
+ 
+-  // Read the state JSON files directly from the filesystem
++  // Note: We changed to native API serving, but backend state.py still writes to disk 
++  // so the legacy files exist for inspection. We read them to verify the schemas.
+   const statePath = path.resolve('../session_state.json');
+   const stateRaw = fs.readFileSync(statePath, 'utf8');
+   const productState = JSON.parse(stateRaw);
+@@ -67,12 +68,20 @@ test('Trigger an agentic state update and verify the generated state is split in
+   expect(execState.ui_metrics).toBeDefined();
+   
+   // Verify a specific piece of the mapped data to prove domain logic is handled by backend
++  // In the raw JSON, keys are snake_case or mixed, but DTO should fetch it and map to camelCase.
++  // The backend execution_state.json dumps 'currentTask' exactly because in backend/state.py: `currentTask` is hardcoded as camelCase
++  // We can just verify the backend dump correctly
+   expect(execState.ui_agents[0].currentTask).toBe(`Task ${dynamicTaskId}`);
+   expect(execState.ui_metrics.agentCount).toBe(2);
+ 
+   // Take screenshot as evidence
+   await page.goto('/');
+   await expect(page.locator('h1:has-text("BuilderLoom")')).toBeVisible();
++  
++  // Verify the camelCase mapped DTO is used correctly by the components
++  // the AgentCard renders happinessScore: `text-emerald-400">{agent.happinessScore}/10`
++  await expect(page.locator('.text-emerald-400').first()).toContainText('/10');
++  
+   await page.screenshot({ path: 'evidence.png' });
+ });
+ 
+diff --git a/execution_state.json b/execution_state.json
+index 25bb2a9..cd8dc59 100644
+--- a/execution_state.json
++++ b/execution_state.json
+@@ -33,7 +33,7 @@
+     {
+       "agentId": "jules-alpha",
+       "state": "idle",
+-      "currentTask": "Task TEST-1772913255694",
++      "currentTask": "Task TEST-1772932823601",
+       "happinessScore": 8
+     },
+     {
+diff --git a/main.py b/main.py
+index b580137..9a8340c 100644
+--- a/main.py
++++ b/main.py
+@@ -239,7 +239,37 @@ def start_viewer_server():
+                     pass
+                 return
+ 
+-            if not (self.path.startswith("/viewer") or self.path.startswith("/session_state.json") or self.path.startswith("/execution_state.json")):
++            if self.path == "/api/session_state":
++                try:
++                    state = ConductorState.load()
++                    # Exporting as dict and filtering
++                    session_json = state.model_dump_json(exclude={'ui_containers', 'ui_agents', 'ui_metrics'})
++                    self.send_response(200)
++                    self.send_header('Content-Type', 'application/json')
++                    self.end_headers()
++                    self.wfile.write(session_json.encode('utf-8'))
++                    return
++                except Exception as e:
++                    logger.error(f"Failed to serve session state: {e}")
++                    self.send_error(500, "Internal Server Error")
++                    return
++
++            if self.path == "/api/execution_state":
++                try:
++                    state = ConductorState.load()
++                    # Only the UI components
++                    exec_json = state.model_dump_json(include={'schema_version', 'ui_containers', 'ui_agents', 'ui_metrics'})
++                    self.send_response(200)
++                    self.send_header('Content-Type', 'application/json')
++                    self.end_headers()
++                    self.wfile.write(exec_json.encode('utf-8'))
++                    return
++                except Exception as e:
++                    logger.error(f"Failed to serve execution state: {e}")
++                    self.send_error(500, "Internal Server Error")
++                    return
++
++            if not self.path.startswith("/viewer"):
+                 self.send_error(403, "Forbidden")
+                 return
+             
+diff --git a/session_state.json b/session_state.json
+index d2131a4..1dff508 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -8,7 +8,7 @@
+   "current_iteration": 0,
+   "active_branch": "main",
+   "backlog": [],
+-  "active_task_id": "TEST-1772913255694",
++  "active_task_id": "TEST-1772932823601",
+   "inspiration_goal": "",
+   "inspiration_target_route": "/",
+   "inspiration_data_model": null,
+@@ -25,17 +25,7 @@
+   "current_phase": "Inspiration",
+   "pending_steer": [],
+   "steering_history": [],
+-  "live_logs": [
+-    "[19:25:10] INFO: Configuring Git identity...",
+-    "[19:25:10] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
+-    "[19:25:10] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
+-    "[19:25:42] INFO: Configuring Git identity...",
+-    "[19:25:42] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
+-    "[19:25:42] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
+-    "[19:50:07] INFO: Configuring Git identity...",
+-    "[19:50:07] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
+-    "[19:50:07] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
+-  ],
++  "live_logs": [],
+   "shutdown_requested": false,
+   "update_scheduled": false,
+   "db_stats": {}
+diff --git a/src/hooks/useLogs.ts b/src/hooks/useLogs.ts
+index 3893910..5d47d65 100644
+--- a/src/hooks/useLogs.ts
++++ b/src/hooks/useLogs.ts
+@@ -1,37 +1,62 @@
+-import { useEffect, useState } from 'react';
++import { useEffect, useState, useRef } from 'react';
+ 
+ export function useLogs() {
+   const [logs, setLogs] = useState<string[]>([]);
++  const retryCount = useRef(0);
++  const maxRetries = 10;
++  const eventSourceRef = useRef<EventSource | null>(null);
+ 
+   useEffect(() => {
+-    // Connect to SSE endpoint
+-    const eventSource = new EventSource('/api/logs/stream');
+-    
+-    eventSource.onmessage = (event) => {
+-      try {
+-        const newLogs = JSON.parse(event.data);
+-        if (Array.isArray(newLogs) && newLogs.length > 0) {
+-          setLogs(prev => {
+-            const combined = [...prev, ...newLogs];
+-            // keep max 500 logs
+-            if (combined.length > 500) {
+-              return combined.slice(-500);
+-            }
+-            return combined;
+-          });
++    let timeoutId: number;
++
++    const connect = () => {
++      // Connect to SSE endpoint
++      const eventSource = new EventSource('/api/logs/stream');
++      eventSourceRef.current = eventSource;
++      
++      eventSource.onopen = () => {
++        retryCount.current = 0; // Reset on success
++      };
++
++      eventSource.onmessage = (event) => {
++        try {
++          const newLogs = JSON.parse(event.data);
++          if (Array.isArray(newLogs) && newLogs.length > 0) {
++            setLogs(prev => {
++              const combined = [...prev, ...newLogs];
++              // keep max 500 logs
++              if (combined.length > 500) {
++                return combined.slice(-500);
++              }
++              return combined;
++            });
++          }
++        } catch (e) {
++          console.error("Failed to parse logs", e);
+         }
+-      } catch (e) {
+-        console.error("Failed to parse logs", e);
+-      }
+-    };
++      };
+ 
+-    eventSource.onerror = (err) => {
+-      console.error("SSE error", err);
+-      // EventSource automatically reconnects
++      eventSource.onerror = (err) => {
++        console.error("SSE error", err);
++        eventSource.close();
++        
++        if (retryCount.current < maxRetries) {
++          const timeout = Math.min(10000, 1000 * Math.pow(2, retryCount.current));
++          retryCount.current++;
++          timeoutId = window.setTimeout(connect, timeout);
++        }
++      };
+     };
+ 
++    connect();
++
+     return () => {
+-      eventSource.close();
++      if (timeoutId) {
++        window.clearTimeout(timeoutId);
++      }
++      if (eventSourceRef.current) {
++        eventSourceRef.current.close();
++      }
+     };
+   }, []);
+ 
+diff --git a/src/services/api.ts b/src/services/api.ts
+index 87c1710..fbd7e55 100644
+--- a/src/services/api.ts
++++ b/src/services/api.ts
+@@ -1,19 +1,35 @@
+-import { SessionState, ProductState, ExecutionState } from '../types/product';
++import { SessionState, ProductState, ExecutionState } from '../types/orchestration';
++
++const toCamelCase = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
++
++const convertKeysToCamelCase = (obj: any): any => {
++  if (Array.isArray(obj)) {
++    return obj.map(v => convertKeysToCamelCase(v));
++  } else if (obj !== null && obj.constructor === Object) {
++    return Object.keys(obj).reduce((result, key) => {
++      result[toCamelCase(key)] = convertKeysToCamelCase(obj[key]);
++      return result;
++    }, {} as any);
++  }
++  return obj;
++};
+ 
+ export const fetchProductState = async (): Promise<ProductState> => {
+-  const response = await fetch('/session_state.json');
++  const response = await fetch('/api/session_state');
+   if (!response.ok) {
+     throw new Error('Network response was not ok');
+   }
+-  return response.json();
++  const data = await response.json();
++  return convertKeysToCamelCase(data) as ProductState;
+ };
+ 
+ export const fetchExecutionState = async (): Promise<ExecutionState> => {
+-  const response = await fetch('/execution_state.json');
++  const response = await fetch('/api/execution_state');
+   if (!response.ok) {
+     throw new Error('Network response was not ok');
+   }
+-  return response.json();
++  const data = await response.json();
++  return convertKeysToCamelCase(data) as ExecutionState;
+ };
+ 
+ export const fetchState = async (): Promise<SessionState> => {
+diff --git a/src/types/iteration.ts b/src/types/iteration.ts
+new file mode 100644
+index 0000000..5ca4113
+--- /dev/null
++++ b/src/types/iteration.ts
+@@ -0,0 +1,41 @@
++export interface AttemptRecord {
++  attemptNumber: number;
++  promptUsed: string;
++  appScreenshotPath?: string | null;
++  julesPatchPath?: string | null;
++  julesUrl?: string | null;
++  julesAction?: string | null;
++  score: number;
++  critique: string;
++}
++
++export interface LoopIteration {
++  id: number;
++  timestamp: string;
++  goal: string;
++  targetRoute: string;
++  dataModel?: string | null;
++  requiresDesign: boolean;
++  testScenario?: string | null;
++  negativeHistory: string[];
++  brainstormingOutput?: string | null;
++  baseBriefs: string[];
++  baseSeedPaths: (string | null)[];
++  baseVariantsData?: Record<string, unknown>[] | null;
++  seedReviewCritique?: string | null;
++  designScreenshotPath?: string | null;
++  designVariantsPaths: (string | null)[];
++  layoutReviewCritique?: string | null;
++  chosenDesignPath?: string | null;
++  designReviewCritique?: string | null;
++  themeVariantsPaths: (string | null)[];
++  chosenThemePath?: string | null;
++  themeReviewCritique?: string | null;
++  attempts: AttemptRecord[];
++  happinessScore: number;
++  successfulBranch?: string | null;
++  abandoned: boolean;
++  architecturalCritique?: string | null;
++  reflectionLearnings?: string | null;
++  gitCommit?: string | null;
++}
+diff --git a/src/types/orchestration.ts b/src/types/orchestration.ts
+new file mode 100644
+index 0000000..f0db137
+--- /dev/null
++++ b/src/types/orchestration.ts
+@@ -0,0 +1,49 @@
++import { DockerContainer, OrchestrationMetrics } from './infrastructure';
++import { AgentStatus } from './agents';
++import { BacklogTask } from './tasks';
++import { LoopIteration } from './iteration';
++
++export interface ProductState {
++  schemaVersion: string;
++  projectName: string;
++  appMeta: string;
++  productPhase: string;
++  productRoadmap: string;
++  repoMemory: Record<string, unknown>;
++  currentIteration: number;
++  activeBranch: string;
++  
++  backlog: BacklogTask[];
++  activeTaskId: string | null;
++  
++  inspirationGoal: string;
++  inspirationTargetRoute: string;
++  inspirationDataModel: string | null;
++  inspirationRequiresDesign: boolean;
++  inspirationMode: string;
++  inspirationTestScenario: string;
++  
++  history: LoopIteration[];
++  stitchProjectId: string | null;
++  stitchScreenId: string | null;
++  activeJulesPrompt: string | null;
++  activeJulesUrl: string | null;
++  activeJulesAction: string | null;
++  currentStatus: string;
++  currentPhase: string;
++  pendingSteer: string[];
++  steeringHistory: Record<string, unknown>[];
++  liveLogs: string[];
++  shutdownRequested: boolean;
++  updateScheduled: boolean;
++  dbStats: Record<string, number>;
++}
++
++export interface ExecutionState {
++  schemaVersion: string;
++  uiContainers: DockerContainer[];
++  uiAgents: AgentStatus[];
++  uiMetrics: OrchestrationMetrics;
++}
++
++export type SessionState = ProductState & ExecutionState;
+diff --git a/src/types/product.ts b/src/types/product.ts
+deleted file mode 100644
+index bd31a94..0000000
+--- a/src/types/product.ts
++++ /dev/null
+@@ -1,103 +0,0 @@
+-import { DockerContainer, OrchestrationMetrics } from './infrastructure';
+-import { AgentStatus } from './agents';
+-
+-export interface BacklogTask {
+-  id: string;
+-  type: 'feature' | 'refactor' | 'bugfix';
+-  priority: number;
+-  description: string;
+-  target_route: string;
+-  data_model?: string | null;
+-  requires_design: boolean;
+-  test_scenario: string;
+-  context: string;
+-  status: string;
+-}
+-
+-export interface AttemptRecord {
+-  attempt_number: number;
+-  prompt_used: string;
+-  app_screenshot_path?: string | null;
+-  jules_patch_path?: string | null;
+-  jules_url?: string | null;
+-  jules_action?: string | null;
+-  score: number;
+-  critique: string;
+-}
+-
+-export interface LoopIteration {
+-  id: number;
+-  timestamp: string;
+-  goal: string;
+-  target_route: string;
+-  data_model?: string | null;
+-  requires_design: boolean;
+-  test_scenario?: string | null;
+-  negative_history: string[];
+-  brainstorming_output?: string | null;
+-  base_briefs: string[];
+-  base_seed_paths: (string | null)[];
+-  base_variants_data?: any[] | null;
+-  seed_review_critique?: string | null;
+-  design_screenshot_path?: string | null;
+-  design_variants_paths: (string | null)[];
+-  layout_review_critique?: string | null;
+-  chosen_design_path?: string | null;
+-  design_review_critique?: string | null;
+-  theme_variants_paths: (string | null)[];
+-  chosen_theme_path?: string | null;
+-  theme_review_critique?: string | null;
+-  attempts: AttemptRecord[];
+-  happiness_score: number;
+-  successful_branch?: string | null;
+-  abandoned: boolean;
+-  architectural_critique?: string | null;
+-  reflection_learnings?: string | null;
+-  git_commit?: string | null;
+-}
+-
+-export interface ProductState {
+-  schema_version: string;
+-  project_name: string;
+-  app_meta: string;
+-  product_phase: string;
+-  product_roadmap: string;
+-  repo_memory: Record<string, any>;
+-  current_iteration: number;
+-  active_branch: string;
+-  
+-  backlog: BacklogTask[];
+-  active_task_id: string | null;
+-  
+-  inspiration_goal: string;
+-  inspiration_target_route: string;
+-  inspiration_data_model: string | null;
+-  inspiration_requires_design: boolean;
+-  inspiration_mode: string;
+-  inspiration_test_scenario: string;
+-  
+-  history: LoopIteration[];
+-  stitch_project_id: string | null;
+-  stitch_screen_id: string | null;
+-  active_jules_prompt: string | null;
+-  active_jules_url: string | null;
+-  active_jules_action: string | null;
+-  current_status: string;
+-  current_phase: string;
+-  pending_steer: string[];
+-  steering_history: Record<string, any>[];
+-  live_logs: string[];
+-  shutdown_requested: boolean;
+-  update_scheduled: boolean;
+-  db_stats: Record<string, number>;
+-}
+-
+-export interface ExecutionState {
+-  schema_version: string;
+-  ui_containers: DockerContainer[];
+-  ui_agents: AgentStatus[];
+-  ui_metrics: OrchestrationMetrics;
+-}
+-
+-// Keep SessionState as a union for backward compatibility in components if needed
+-export type SessionState = ProductState & ExecutionState;
+diff --git a/src/types/tasks.ts b/src/types/tasks.ts
+new file mode 100644
+index 0000000..7f2ebe7
+--- /dev/null
++++ b/src/types/tasks.ts
+@@ -0,0 +1,12 @@
++export interface BacklogTask {
++  id: string;
++  type: 'feature' | 'refactor' | 'bugfix';
++  priority: number;
++  description: string;
++  targetRoute: string;
++  dataModel?: string | null;
++  requiresDesign: boolean;
++  testScenario: string;
++  context: string;
++  status: string;
++}
+diff --git a/tests/test_core.py b/tests/test_core.py
+new file mode 100644
+index 0000000..7bdb96c
+--- /dev/null
++++ b/tests/test_core.py
+@@ -0,0 +1,107 @@
++import os
++import json
++import pytest
++from backend.state import ConductorState, BacklogTask, TaskType, TaskPriority
++import backend.state
++
++# Ensure files are cleared before and after each test
++@pytest.fixture(autouse=True)
++def clean_state_files():
++    # Setup
++    backend.state._global_state = None
++    if os.path.exists("session_state.json"):
++        os.remove("session_state.json")
++    if os.path.exists("execution_state.json"):
++        os.remove("execution_state.json")
++    
++    yield
++    
++    # Teardown
++    backend.state._global_state = None
++    if os.path.exists("session_state.json"):
++        os.remove("session_state.json")
++    if os.path.exists("execution_state.json"):
++        os.remove("execution_state.json")
++
++def test_state_instantiation_and_dump():
++    # Ensure it's empty to start
++    assert backend.state._global_state is None
++
++    # Load should instantiate a new state since files were removed
++    state = ConductorState.load()
++    assert state is not None
++    assert state.schema_version == "1.0.0"
++    
++    # Modify state
++    state.project_name = "Test Project"
++    
++    # Save to disk
++    state.save()
++    
++    # Verify files exist
++    assert os.path.exists("session_state.json")
++    assert os.path.exists("execution_state.json")
++    
++    # Verify the saved content using native JSON load
++    with open("session_state.json", "r", encoding="utf-8") as f:
++        session_data = json.load(f)
++        assert session_data["project_name"] == "Test Project"
++        # Since exclude was used, ensure ui_containers doesn't exist here
++        assert "ui_containers" not in session_data
++        
++    with open("execution_state.json", "r", encoding="utf-8") as f:
++        exec_data = json.load(f)
++        assert exec_data["schema_version"] == "1.0.0"
++        # Make sure ui components exist in execution
++        assert "ui_containers" in exec_data
++        assert "ui_agents" in exec_data
++        assert "ui_metrics" in exec_data
++
++from loom.core.overseer import Overseer
++
++class MockOverseer(Overseer):
++    """Subclass to override external dependencies like git, generative AI setup, and long-running loops."""
++    def __init__(self):
++        # Instead of calling super().__init__() and letting it setup real clients,
++        # we will selectively mock properties and just load state.
++        self.state = ConductorState.load()
++        self.state.shutdown_requested = False
++        
++        # Add a backlog task so it does something
++        self.state.backlog.append(
++            BacklogTask(
++                id="TEST-TASK-1",
++                type=TaskType.FEATURE,
++                priority=TaskPriority.P0_CRITICAL,
++                description="Mock test task"
++            )
++        )
++        self.state.save()
++        
++        # Mock external dependencies used in triage
++        class MockGit:
++            def checkout_branch(self, branch): pass
++        self.git = MockGit()
++        
++        class MockPM:
++            def breakdown_task_if_needed(self, task): return {"action": "proceed"}
++        self.pm = MockPM()
++
++    def loop(self):
++        """A single iteration loop that doesn't run forever."""
++        # Just run the triage step instead of full loop
++        try:
++            self._step_triage()
++            # If we successfully triage, we would have picked up the task
++            assert self.state.active_task_id == "TEST-TASK-1"
++            assert self.state.current_status != "CRITICAL_ERROR"
++        except Exception as e:
++            pytest.fail(f"Loop iteration raised an unexpected exception: {e}")
++
++def test_overseer_initialization_and_loop_iteration():
++    # The Overseer relies on external APIs in normal execution,
++    # so we test the subclass which mocks out the problematic network setups
++    mock_overseer = MockOverseer()
++    
++    # Run a single loop iteration and verify it handles it without crashing
++    mock_overseer.loop()
+diff --git a/vite.config.ts b/vite.config.ts
+index 02cbee2..e8ee81b 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -2,6 +2,11 @@ import { defineConfig } from 'vite'
+ import react from '@vitejs/plugin-react'
+ 
+ export default defineConfig({
+-  server: { host: '127.0.0.1' },
++  server: {
++    host: '127.0.0.1',
++    proxy: {
++      '/api': 'http://127.0.0.1:8080'
++    }
++  },
+   plugins: [react()],
+ })

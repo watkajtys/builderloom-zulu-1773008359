@@ -1,0 +1,142 @@
+diff --git a/app/index.html b/app/index.html
+index b6e5320..6caa743 100644
+--- a/app/index.html
++++ b/app/index.html
+@@ -9,6 +9,6 @@
+   </head>
+   <body>
+     <div id="root"></div>
+-    <script type="module" src="./src/main.tsx"></script>
++    <script type="module" src="src/main.tsx"></script>
+   </body>
+ </html>
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 275fd9f..afb608b 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -279,7 +279,7 @@ test('Verify dynamic import was removed and application fetches JSON properly av
+   // Verify that index.html contains the relative path to prevent Vite module resolution failure
+   const indexPath = path.resolve(__dirname, '../index.html');
+   const indexRaw = fs.readFileSync(indexPath, 'utf8');
+-  expect(indexRaw).toContain('src="./src/main.tsx"');
++  expect(indexRaw).toContain('src="src/main.tsx"');
+ 
+   // Take screenshot as evidence
+   await page.goto('/');
+diff --git a/execution_state.json b/execution_state.json
+deleted file mode 100644
+index 4510ca6..0000000
+--- a/execution_state.json
++++ /dev/null
+@@ -1,51 +0,0 @@
+-{
+-  "schema_version": "1.0.0",
+-  "ui_containers": [
+-    {
+-      "id": "1",
+-      "name": "loom-pocketbase",
+-      "status": "stopped",
+-      "image": "pocketbase/pocketbase",
+-      "ports": [
+-        "8090:8090"
+-      ]
+-    },
+-    {
+-      "id": "2",
+-      "name": "loom-python",
+-      "status": "running",
+-      "image": "python:3.11-slim",
+-      "ports": [
+-        "8080:8080"
+-      ]
+-    },
+-    {
+-      "id": "3",
+-      "name": "loom-react",
+-      "status": "stopped",
+-      "image": "node:20-alpine",
+-      "ports": [
+-        "5173:5173"
+-      ]
+-    }
+-  ],
+-  "ui_agents": [
+-    {
+-      "agentId": "jules-alpha",
+-      "state": "idle",
+-      "currentTask": "Waiting for task",
+-      "happinessScore": 10
+-    },
+-    {
+-      "agentId": "overseer-beta",
+-      "state": "idle",
+-      "currentTask": "Phase: Inspiration",
+-      "happinessScore": 10
+-    }
+-  ],
+-  "ui_metrics": {
+-    "activeContainers": 1,
+-    "agentCount": 2,
+-    "systemHealth": 0
+-  }
+-}
+\ No newline at end of file
+diff --git a/session_state.json b/session_state.json
+deleted file mode 100644
+index bace027..0000000
+--- a/session_state.json
++++ /dev/null
+@@ -1,52 +0,0 @@
+-{
+-  "schema_version": "1.0.0",
+-  "version": "v1.1",
+-  "logs": [
+-    {
+-      "id": "log-1",
+-      "timestamp": "2024-03-08T12:00:00Z",
+-      "agent": "test-agent",
+-      "level": "error",
+-      "message": "Structured error log test",
+-      "metadata": {
+-        "reason": "testing"
+-      }
+-    },
+-    {
+-      "id": "log-2",
+-      "timestamp": "2024-03-08T12:00:05Z",
+-      "agent": "test-agent",
+-      "level": "info",
+-      "message": "Structured info log test"
+-    }
+-  ],
+-  "project_name": "Loom Experiment",
+-  "app_meta": "",
+-  "product_phase": "Phase 1: Core Loop MVP",
+-  "product_roadmap": "",
+-  "repo_memory": {},
+-  "current_iteration": 0,
+-  "active_branch": "main",
+-  "backlog": [],
+-  "active_task_id": null,
+-  "inspiration_goal": "",
+-  "inspiration_target_route": "/",
+-  "inspiration_data_model": null,
+-  "inspiration_requires_design": true,
+-  "inspiration_mode": "design",
+-  "inspiration_test_scenario": "",
+-  "history": [],
+-  "stitch_project_id": null,
+-  "stitch_screen_id": null,
+-  "active_jules_prompt": null,
+-  "active_jules_url": null,
+-  "active_jules_action": null,
+-  "current_status": "Idle",
+-  "current_phase": "Inspiration",
+-  "pending_steer": [],
+-  "steering_history": [],
+-  "live_logs": [],
+-  "shutdown_requested": true,
+-  "update_scheduled": false,
+-  "db_stats": {}
+-}
+\ No newline at end of file

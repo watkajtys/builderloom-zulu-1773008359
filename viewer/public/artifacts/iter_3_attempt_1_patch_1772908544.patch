@@ -1,0 +1,101 @@
+diff --git a/loom/core/state.py b/loom/core/state.py
+index 88f29d1..c0528af 100644
+--- a/loom/core/state.py
++++ b/loom/core/state.py
+@@ -77,6 +77,7 @@ _global_state = None
+ _state_lock = threading.RLock()
+ 
+ class ConductorState(BaseModel):
++    schema_version: str = "1.0.0"
+     project_name: str = "Loom Experiment"
+     app_meta: str = ""
+     product_phase: str = "Phase 1: Core Loop MVP"
+diff --git a/session_state.json b/session_state.json
+index 8a49443..85fcd96 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -1,4 +1,5 @@
+ {
++  "schema_version": "1.0.0",
+   "project_name": "Loom Experiment",
+   "app_meta": "",
+   "product_phase": "Phase 1: Core Loop MVP",
+@@ -7,7 +8,7 @@
+   "current_iteration": 0,
+   "active_branch": "main",
+   "backlog": [],
+-  "active_task_id": null,
++  "active_task_id": "TEST-123",
+   "inspiration_goal": "",
+   "inspiration_target_route": "/",
+   "inspiration_data_model": null,
+@@ -22,7 +23,12 @@
+   "active_jules_action": null,
+   "current_status": "Idle",
+   "current_phase": "Inspiration",
+-  "pending_steer": [],
++  "pending_steer": [
++    "test note",
++    "test note",
++    "test note",
++    "test note"
++  ],
+   "steering_history": [],
+   "live_logs": [
+     "[17:53:19] INFO: Configuring Git identity...",
+@@ -45,7 +51,19 @@
+     "[18:17:16] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
+     "[18:18:01] INFO: Configuring Git identity...",
+     "[18:18:01] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
+-    "[18:18:01] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
++    "[18:18:01] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:29:01] INFO: Configuring Git identity...",
++    "[18:29:01] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:29:01] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:29:43] INFO: Configuring Git identity...",
++    "[18:29:43] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:29:43] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:30:14] INFO: Configuring Git identity...",
++    "[18:30:15] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:30:15] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:30:38] INFO: Configuring Git identity...",
++    "[18:30:38] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:30:38] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
+   ],
+   "shutdown_requested": false,
+   "update_scheduled": false,
+diff --git a/tests/verify.spec.ts b/tests/verify.spec.ts
+index 197dfa4..fd39b28 100644
+--- a/tests/verify.spec.ts
++++ b/tests/verify.spec.ts
+@@ -1,4 +1,7 @@
+ import { test, expect } from '@playwright/test';
++import { execSync } from 'child_process';
++import * as fs from 'fs';
++import * as path from 'path';
+ 
+ test('App initializes correctly and renders dashboard components', async ({ page }) => {
+   await page.goto('/');
+@@ -14,3 +17,22 @@ test('App initializes correctly and renders dashboard components', async ({ page
+   // Take screenshot as evidence
+   await page.screenshot({ path: 'evidence.png' });
+ });
++
++test('Trigger an agentic state update and verify the generated state perfectly matches the new strictly versioned JSON schema without relying on React for logic.', async ({ page }) => {
++  // Trigger state update directly via Python backend to ensure it's generated natively
++  execSync('python3 -c "from loom.core.state import ConductorState; state = ConductorState.load(); state.active_task_id = \'TEST-123\'; state.save()"');
++
++  // Read the state JSON file directly from the filesystem
++  const statePath = path.resolve('session_state.json');
++  const stateRaw = fs.readFileSync(statePath, 'utf8');
++  const state = JSON.parse(stateRaw);
++
++  // Verify the schema version exists and is "1.0.0"
++  expect(state.schema_version).toBe('1.0.0');
++  expect(state.active_task_id).toBe('TEST-123');
++
++  // Take screenshot as evidence
++  await page.goto('/');
++  await expect(page.locator('h1:has-text("BuilderLoom")')).toBeVisible();
++  await page.screenshot({ path: 'evidence.png' });
++});

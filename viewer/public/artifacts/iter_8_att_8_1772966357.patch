@@ -1,0 +1,89 @@
+diff --git a/app/playwright.config.ts b/app/playwright.config.ts
+index 14f630c..44845c7 100644
+--- a/app/playwright.config.ts
++++ b/app/playwright.config.ts
+@@ -17,4 +17,10 @@ export default defineConfig({
+       use: { ...devices['Desktop Chrome'] },
+     },
+   ],
++  webServer: {
++    command: 'npm run dev',
++    url: 'http://127.0.0.1:5173',
++    reuseExistingServer: !process.env.CI,
++    timeout: 120 * 1000,
++  },
+ });
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 7cb6712..8af74ed 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -276,6 +276,11 @@ state.save()
+ });
+ 
+ test('Verify dynamic import was removed and application fetches JSON properly avoiding Vite build failure', async ({ page }) => {
++  // Verify that index.html contains the relative path to prevent Vite module resolution failure
++  const indexPath = path.resolve(__dirname, '../index.html');
++  const indexRaw = fs.readFileSync(indexPath, 'utf8');
++  expect(indexRaw).toContain('src="./src/main.tsx"');
++
+   // Take screenshot as evidence
+   await page.goto('/');
+   await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
+diff --git a/index.html b/index.html
+index 8c70ff5..f4e01e0 100644
+--- a/index.html
++++ b/index.html
+@@ -7,6 +7,6 @@
+   </head>
+   <body>
+     <div id="root"></div>
+-    <script type="module" src="/src/main.tsx"></script>
++    <script type="module" src="./src/main.tsx"></script>
+   </body>
+ </html>
+diff --git a/session_state.json b/session_state.json
+index ad344ed..37a0324 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -3,16 +3,16 @@
+   "version": "v1.1",
+   "logs": [
+     {
+-      "id": "2c03421e-9cce-4794-b5d2-7afad9252aa8",
+-      "timestamp": "2026-03-08T10:04:09.582392Z",
++      "id": "2a6bc463-c401-4d6d-905d-9a388ed29cba",
++      "timestamp": "2026-03-08T10:21:31.547440Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "Starting Telemetry Loop",
+       "metadata": {}
+     },
+     {
+-      "id": "76fb0ce3-fdc9-4cdb-ab4b-23965aceefd2",
+-      "timestamp": "2026-03-08T10:04:09.583516Z",
++      "id": "f21ba119-8dfc-43b6-bf96-b82295f43f33",
++      "timestamp": "2026-03-08T10:21:31.548936Z",
+       "agent": "overseer",
+       "level": "error",
+       "message": "Intentional exception to test telemetry",
+@@ -21,16 +21,16 @@
+       }
+     },
+     {
+-      "id": "f1a29144-01d5-433e-8a83-3e3cc9a55135",
+-      "timestamp": "2026-03-08T10:04:10.566642Z",
++      "id": "34c88137-97cf-4232-8c1e-c3cdee5a2445",
++      "timestamp": "2026-03-08T10:21:32.460021Z",
+       "agent": "test_runner",
+       "level": "error",
+       "message": "This is a critical system error that should remain visible.",
+       "metadata": {}
+     },
+     {
+-      "id": "6a7c8497-8f52-4e6b-b012-1ef3f84c476a",
+-      "timestamp": "2026-03-08T10:04:10.567529Z",
++      "id": "a7c041a3-5728-4547-8609-6653a49f887d",
++      "timestamp": "2026-03-08T10:21:32.460829Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "This is a thought that should be hidden when filtered.",

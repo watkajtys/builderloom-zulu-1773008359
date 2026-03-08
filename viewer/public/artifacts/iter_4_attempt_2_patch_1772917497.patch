@@ -1,0 +1,202 @@
+diff --git a/package-lock.json b/package-lock.json
+index 078a109..4f07e6f 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -10,7 +10,6 @@
+       "dependencies": {
+         "@tanstack/react-query": "^5.90.21",
+         "lucide-react": "^0.454.0",
+-        "pocketbase": "^0.21.1",
+         "react": "^19.0.0",
+         "react-dom": "^19.0.0",
+         "react-router-dom": "^7.0.0"
+@@ -2124,12 +2123,6 @@
+         "node": ">=18"
+       }
+     },
+-    "node_modules/pocketbase": {
+-      "version": "0.21.5",
+-      "resolved": "https://registry.npmjs.org/pocketbase/-/pocketbase-0.21.5.tgz",
+-      "integrity": "sha512-bnI/uinnQps+ElSlzxkc4yvwuSFfKcoszDtXH/4QT2FhGq2mJVUvDlxn+rjRXVntUjPfmMG5LEPZ1eGqV6ssog==",
+-      "license": "MIT"
+-    },
+     "node_modules/postcss": {
+       "version": "8.5.8",
+       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.8.tgz",
+diff --git a/package.json b/package.json
+index c761a44..42df336 100644
+--- a/package.json
++++ b/package.json
+@@ -13,7 +13,6 @@
+   "dependencies": {
+     "@tanstack/react-query": "^5.90.21",
+     "lucide-react": "^0.454.0",
+-    "pocketbase": "^0.21.1",
+     "react": "^19.0.0",
+     "react-dom": "^19.0.0",
+     "react-router-dom": "^7.0.0"
+diff --git a/src/components/common/Header.tsx b/src/components/common/Header.tsx
+index 2f0ab4c..2547ebb 100644
+--- a/src/components/common/Header.tsx
++++ b/src/components/common/Header.tsx
+@@ -4,16 +4,23 @@ export default function Header() {
+   const location = useLocation();
+ 
+   const getPageTitle = (pathname: string) => {
+-    if (pathname === '/') return 'Dashboard';
++    // Exact route mapping prevents brittle behavior when dynamic parameters are added
++    const titles: Record<string, string> = {
++      '/': 'Dashboard',
++      '/agents': 'Agents'
++    };
+     
+-    // Remove leading slash and any trailing slash, then split by slash or dash
+-    const cleanPath = pathname.replace(/^\/|\/$/g, '');
+-    const segments = cleanPath.split(/[\/-]/);
++    if (titles[pathname]) {
++      return titles[pathname];
++    }
+     
+-    // Capitalize each word and join with a space
+-    return segments
+-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+-      .join(' ');
++    // Fallback for unknown routes or future dynamic routes until they are added
++    const baseRoute = pathname.split('/')[1];
++    if (baseRoute) {
++      return baseRoute.charAt(0).toUpperCase() + baseRoute.slice(1);
++    }
++    
++    return 'Loom App';
+   };
+ 
+   return (
+diff --git a/src/components/domain/AgentCard.tsx b/src/components/domain/AgentCard.tsx
+index 2bc0b51..fc77397 100644
+--- a/src/components/domain/AgentCard.tsx
++++ b/src/components/domain/AgentCard.tsx
+@@ -1,4 +1,4 @@
+-import { AgentStatus } from '../../types/orchestration';
++import { AgentStatus } from '../../types/agents';
+ import { Users } from 'lucide-react';
+ 
+ interface AgentCardProps {
+diff --git a/src/components/domain/AgentList.tsx b/src/components/domain/AgentList.tsx
+index f413c12..9e19434 100644
+--- a/src/components/domain/AgentList.tsx
++++ b/src/components/domain/AgentList.tsx
+@@ -1,4 +1,4 @@
+-import { AgentStatus } from '../../types/orchestration';
++import { AgentStatus } from '../../types/agents';
+ import AgentCard from './AgentCard';
+ import CompactAgentCard from './CompactAgentCard';
+ 
+diff --git a/src/components/domain/CompactAgentCard.tsx b/src/components/domain/CompactAgentCard.tsx
+index 451ea7a..fe59c9b 100644
+--- a/src/components/domain/CompactAgentCard.tsx
++++ b/src/components/domain/CompactAgentCard.tsx
+@@ -1,4 +1,4 @@
+-import { AgentStatus } from '../../types/orchestration';
++import { AgentStatus } from '../../types/agents';
+ import { Users } from 'lucide-react';
+ 
+ interface CompactAgentCardProps {
+diff --git a/src/components/domain/ContainerList.tsx b/src/components/domain/ContainerList.tsx
+index 3fffce4..b5752a7 100644
+--- a/src/components/domain/ContainerList.tsx
++++ b/src/components/domain/ContainerList.tsx
+@@ -1,4 +1,4 @@
+-import { DockerContainer } from '../../types/orchestration';
++import { DockerContainer } from '../../types/infrastructure';
+ 
+ interface ContainerListProps {
+   containers: DockerContainer[];
+diff --git a/src/services/api.ts b/src/services/api.ts
+index 6af1ab9..87c1710 100644
+--- a/src/services/api.ts
++++ b/src/services/api.ts
+@@ -1,4 +1,4 @@
+-import { SessionState, ProductState, ExecutionState } from '../types/orchestration';
++import { SessionState, ProductState, ExecutionState } from '../types/product';
+ 
+ export const fetchProductState = async (): Promise<ProductState> => {
+   const response = await fetch('/session_state.json');
+@@ -19,13 +19,7 @@ export const fetchExecutionState = async (): Promise<ExecutionState> => {
+ export const fetchState = async (): Promise<SessionState> => {
+   const [productState, executionState] = await Promise.all([
+     fetchProductState(),
+-    fetchExecutionState().catch(() => ({
+-      // Provide fallback if execution state isn't written yet
+-      schema_version: productState.schema_version || "1.0.0",
+-      ui_containers: [],
+-      ui_agents: [],
+-      ui_metrics: { activeContainers: 0, agentCount: 0, systemHealth: 0 }
+-    }))
++    fetchExecutionState()
+   ]);
+   
+   return { ...productState, ...executionState } as SessionState;
+diff --git a/src/types/agents.ts b/src/types/agents.ts
+new file mode 100644
+index 0000000..0858f42
+--- /dev/null
++++ b/src/types/agents.ts
+@@ -0,0 +1,6 @@
++export interface AgentStatus {
++  agentId: string;
++  state: 'idle' | 'coding' | 'reflecting' | 'error' | 'initializing';
++  currentTask?: string;
++  happinessScore: number;
++}
+diff --git a/src/types/infrastructure.ts b/src/types/infrastructure.ts
+new file mode 100644
+index 0000000..0e47561
+--- /dev/null
++++ b/src/types/infrastructure.ts
+@@ -0,0 +1,13 @@
++export interface DockerContainer {
++  id: string;
++  name: string;
++  status: 'running' | 'stopped' | 'crashed' | 'starting';
++  image: string;
++  ports: string[];
++}
++
++export interface OrchestrationMetrics {
++  activeContainers: number;
++  agentCount: number;
++  systemHealth: number; // 0-100
++}
+diff --git a/src/types/orchestration.ts b/src/types/product.ts
+similarity index 85%
+rename from src/types/orchestration.ts
+rename to src/types/product.ts
+index caf0975..bd31a94 100644
+--- a/src/types/orchestration.ts
++++ b/src/types/product.ts
+@@ -1,23 +1,5 @@
+-export interface DockerContainer {
+-  id: string;
+-  name: string;
+-  status: 'running' | 'stopped' | 'crashed' | 'starting';
+-  image: string;
+-  ports: string[];
+-}
+-
+-export interface AgentStatus {
+-  agentId: string;
+-  state: 'idle' | 'coding' | 'reflecting' | 'error' | 'initializing';
+-  currentTask?: string;
+-  happinessScore: number;
+-}
+-
+-export interface OrchestrationMetrics {
+-  activeContainers: number;
+-  agentCount: number;
+-  systemHealth: number; // 0-100
+-}
++import { DockerContainer, OrchestrationMetrics } from './infrastructure';
++import { AgentStatus } from './agents';
+ 
+ export interface BacklogTask {
+   id: string;

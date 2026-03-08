@@ -1,0 +1,1103 @@
+diff --git a/execution_state.json b/execution_state.json
+new file mode 100644
+index 0000000..b34cdf8
+--- /dev/null
++++ b/execution_state.json
+@@ -0,0 +1,51 @@
++{
++  "schema_version": "1.0.0",
++  "ui_containers": [
++    {
++      "id": "1",
++      "name": "loom-pocketbase",
++      "status": "running",
++      "image": "pocketbase/pocketbase",
++      "ports": [
++        "8090:8090"
++      ]
++    },
++    {
++      "id": "2",
++      "name": "loom-python",
++      "status": "running",
++      "image": "python:3.11-slim",
++      "ports": [
++        "8080:8080"
++      ]
++    },
++    {
++      "id": "3",
++      "name": "loom-react",
++      "status": "running",
++      "image": "node:20-alpine",
++      "ports": [
++        "5173:5173"
++      ]
++    }
++  ],
++  "ui_agents": [
++    {
++      "agentId": "jules-alpha",
++      "state": "idle",
++      "currentTask": "Task TEST-1772912137079",
++      "happinessScore": 8
++    },
++    {
++      "agentId": "overseer-beta",
++      "state": "idle",
++      "currentTask": "Phase: Inspiration",
++      "happinessScore": 10
++    }
++  ],
++  "ui_metrics": {
++    "activeContainers": 3,
++    "agentCount": 2,
++    "systemHealth": 100
++  }
++}
+\ No newline at end of file
+diff --git a/loom/core/state.py b/loom/core/state.py
+index 245e729..21ac0ad 100644
+--- a/loom/core/state.py
++++ b/loom/core/state.py
+@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
+ 
+ logger = logging.getLogger("loom")
+ STATE_FILE = Path("session_state.json")
++EXECUTION_STATE_FILE = Path("execution_state.json")
+ 
+ class TaskPriority(int, Enum):
+     P0_CRITICAL = 0
+@@ -159,11 +160,29 @@ class ConductorState(BaseModel):
+     def save(self):
+         with _state_lock:
+             self.prepare_ui_data()
++            
++            # Save Execution State independently
++            tmp_exec_file = EXECUTION_STATE_FILE.with_suffix(f'.tmp.{threading.get_ident()}.json')
++            try:
++                with open(tmp_exec_file, "w", encoding="utf-8") as f:
++                    # Use Pydantic's native JSON dump to safely serialize enums, datetimes, etc.
++                    f.write(self.model_dump_json(indent=2, include={'schema_version', 'ui_containers', 'ui_agents', 'ui_metrics'}))
++                os.replace(tmp_exec_file, EXECUTION_STATE_FILE)
++            except Exception as e:
++                print(f"Warning: Failed to save execution state to disk: {e}")
++            finally:
++                if tmp_exec_file.exists():
++                    try: os.remove(tmp_exec_file)
++                    except: pass
++            
+             # Use a thread-specific temp file to prevent multiple threads from writing to the same file before replacing
+             tmp_file = STATE_FILE.with_suffix(f'.tmp.{threading.get_ident()}.json')
+             try:
+                 with open(tmp_file, "w", encoding="utf-8") as f:
+-                    f.write(self.model_dump_json(indent=2))
++                    # We no longer strictly need ui_* in the main file since we split it out,
++                    # but leaving it in `self.model_dump_json` is fine as legacy fields if needed
++                    # However, to strictly adhere to separating them, we could dump `exclude={'ui_containers', 'ui_agents', 'ui_metrics'}`
++                    f.write(self.model_dump_json(indent=2, exclude={'ui_containers', 'ui_agents', 'ui_metrics'}))
+                 
+                 # Windows specific: retry replace if file is locked
+                 max_retries = 20
+diff --git a/main.py b/main.py
+index a724fda..6f91aee 100644
+--- a/main.py
++++ b/main.py
+@@ -1,296 +1,296 @@
+-import logging
+-from rich.console import Console
+-from rich.logging import RichHandler
+-from dotenv import load_dotenv
+-
+-load_dotenv(override=True)
+-
+-console = Console()
+-logging.basicConfig(
+-    level="INFO",
+-    format="%(message)s",
+-    datefmt="[%X]",
+-    handlers=[RichHandler(console=console, rich_tracebacks=True)]
+-)
+-
+-import os
+-import argparse
+-from loom.core.overseer import Overseer
+-from loom.core.cleaner import clean_slate
+-from loom.core.state import ConductorState
+-import threading
+-import http.server
+-import socketserver
+-from datetime import datetime
+-
+-logger = logging.getLogger("loom")
+-
++import logging
++from rich.console import Console
++from rich.logging import RichHandler
++from dotenv import load_dotenv
++
++load_dotenv(override=True)
++
++console = Console()
++logging.basicConfig(
++    level="INFO",
++    format="%(message)s",
++    datefmt="[%X]",
++    handlers=[RichHandler(console=console, rich_tracebacks=True)]
++)
++
++import os
++import argparse
++from loom.core.overseer import Overseer
++from loom.core.cleaner import clean_slate
++from loom.core.state import ConductorState
++import threading
++import http.server
++import socketserver
++from datetime import datetime
++
++logger = logging.getLogger("loom")
++
+ def db_doctor(pb_host="loom-pocketbase"):
+     if os.getenv("BYPASS_OVERSEER") == "1": return True
+-    """Ensures PocketBase superuser exists, waiting for container to be ready."""
+-    import subprocess
+-    import time
+-    logger.info(f"Configuring PocketBase Superuser on {pb_host}...")
+-    
++    """Ensures PocketBase superuser exists, waiting for container to be ready."""
++    import subprocess
++    import time
++    logger.info(f"Configuring PocketBase Superuser on {pb_host}...")
++    
+     max_retries = int(os.getenv("MAX_RETRIES", "15"))
+-    for i in range(max_retries):
+-        try:
+-            # First, check if the container is even running and responding to CLI
+-            check_cmd = ["docker", "exec", pb_host, "pocketbase", "--version"]
+-            result = subprocess.run(check_cmd, capture_output=True, text=True)
+-            if result.returncode == 0:
+-                # Container is ready for CLI commands
+-                import secrets
+-                pb_password = os.getenv("PB_ADMIN_PASSWORD")
+-                if not pb_password:
+-                    pb_password = secrets.token_urlsafe(16)
+-                    logger.warning(f"PB_ADMIN_PASSWORD not set. Using generated password for admin@loom.local: {pb_password}")
+-
+-                # Try modern v0.23+ superuser upsert
+-                cmd_new = ["docker", "exec", pb_host, "pocketbase", "superuser", "upsert", "admin@loom.local", pb_password, "--dir=/pb_data"]
+-                # Try legacy v0.22 and below admin upsert
+-                cmd_old = ["docker", "exec", pb_host, "pocketbase", "admin", "create", "admin@loom.local", pb_password, "--dir=/pb_data"]
+-                
+-                try:
+-                    subprocess.run(cmd_new, check=True, capture_output=True, text=True)
+-                    logger.info(f"PocketBase Superuser configured successfully via 'superuser upsert' on {pb_host}.")
+-                    return True
+-                except subprocess.CalledProcessError:
+-                    try:
+-                        subprocess.run(cmd_old, check=True, capture_output=True, text=True)
+-                        logger.info(f"PocketBase Superuser configured successfully via 'admin create' on {pb_host}.")
+-                        return True
+-                    except subprocess.CalledProcessError as e:
+-                        logger.warning(f"Both superuser/admin creation methods failed: {e.stderr}")
+-                        if e.stderr and "already exists" in e.stderr.lower():
+-                            return True
+-                        # Don't return True otherwise. Let it loop and try again.
+-        except Exception as e:
+-            if i == max_retries - 1:
+-                logger.error(f"Failed to configure PocketBase superuser on {pb_host} after {max_retries} attempts: {e}")
+-                return False
+-        
+-        logger.info(f"Waiting for {pb_host} container to stabilize (Attempt {i+1}/{max_retries})...")
+-        time.sleep(2)
+-    return False
+-
+-def git_doctor():
+-    """Ensures git is configured for commits."""
+-    import subprocess
+-    logger.info("Configuring Git identity...")
+-    try:
+-        subprocess.run(["git", "config", "--global", "user.email", "loom@example.com"], check=True)
+-        subprocess.run(["git", "config", "--global", "user.name", "Loom Bot"], check=True)
+-        # Prevent "dubious ownership" errors in Docker volumes
+-        subprocess.run(["git", "config", "--global", "safe.directory", "*"], check=True)
+-        return True
+-    except Exception as e:
+-        logger.error(f"Failed to configure git: {e}")
+-        return False
+-
++    for i in range(max_retries):
++        try:
++            # First, check if the container is even running and responding to CLI
++            check_cmd = ["docker", "exec", pb_host, "pocketbase", "--version"]
++            result = subprocess.run(check_cmd, capture_output=True, text=True)
++            if result.returncode == 0:
++                # Container is ready for CLI commands
++                import secrets
++                pb_password = os.getenv("PB_ADMIN_PASSWORD")
++                if not pb_password:
++                    pb_password = secrets.token_urlsafe(16)
++                    logger.warning(f"PB_ADMIN_PASSWORD not set. Using generated password for admin@loom.local: {pb_password}")
++
++                # Try modern v0.23+ superuser upsert
++                cmd_new = ["docker", "exec", pb_host, "pocketbase", "superuser", "upsert", "admin@loom.local", pb_password, "--dir=/pb_data"]
++                # Try legacy v0.22 and below admin upsert
++                cmd_old = ["docker", "exec", pb_host, "pocketbase", "admin", "create", "admin@loom.local", pb_password, "--dir=/pb_data"]
++                
++                try:
++                    subprocess.run(cmd_new, check=True, capture_output=True, text=True)
++                    logger.info(f"PocketBase Superuser configured successfully via 'superuser upsert' on {pb_host}.")
++                    return True
++                except subprocess.CalledProcessError:
++                    try:
++                        subprocess.run(cmd_old, check=True, capture_output=True, text=True)
++                        logger.info(f"PocketBase Superuser configured successfully via 'admin create' on {pb_host}.")
++                        return True
++                    except subprocess.CalledProcessError as e:
++                        logger.warning(f"Both superuser/admin creation methods failed: {e.stderr}")
++                        if e.stderr and "already exists" in e.stderr.lower():
++                            return True
++                        # Don't return True otherwise. Let it loop and try again.
++        except Exception as e:
++            if i == max_retries - 1:
++                logger.error(f"Failed to configure PocketBase superuser on {pb_host} after {max_retries} attempts: {e}")
++                return False
++        
++        logger.info(f"Waiting for {pb_host} container to stabilize (Attempt {i+1}/{max_retries})...")
++        time.sleep(2)
++    return False
++
++def git_doctor():
++    """Ensures git is configured for commits."""
++    import subprocess
++    logger.info("Configuring Git identity...")
++    try:
++        subprocess.run(["git", "config", "--global", "user.email", "loom@example.com"], check=True)
++        subprocess.run(["git", "config", "--global", "user.name", "Loom Bot"], check=True)
++        # Prevent "dubious ownership" errors in Docker volumes
++        subprocess.run(["git", "config", "--global", "safe.directory", "*"], check=True)
++        return True
++    except Exception as e:
++        logger.error(f"Failed to configure git: {e}")
++        return False
++
+ def doctor():
+     if os.getenv("BYPASS_OVERSEER") == "1": return True
+-    """Validates the environment before starting."""
+-    logger.info("Running system check...")
+-    required_keys = ["GEMINI_API_KEY", "STITCH_API_KEY", "STITCH_PROJECT_ID"]
+-    
+-    # Jules is only required if not mocking
+-    if os.getenv("USE_MOCK_JULES", "").lower() != "true":
+-        required_keys.append("JULES_API_KEY")
+-        
+-    missing = [key for key in required_keys if not os.getenv(key)]
+-    
+-    if missing:
+-        logger.error(f"[bold red]System Check Failed! Missing API Keys: {', '.join(missing)}[/bold red]", extra={"markup": True})
+-        logger.error("Please check your .env file.")
+-        return False
+-    
+-    logger.info("[bold green]System Check Passed.[/bold green]", extra={"markup": True})
+-    return True
+-
+-class StateLogHandler(logging.Handler):
+-    def emit(self, record):
+-        try:
+-            import re
+-            msg = self.format(record)
+-            # Strip Rich markup tags so they don't show up literally in the web dashboard
+-            msg = re.sub(r'\[/?bold.*?\]', '', msg)
+-            
+-            timestamp = datetime.now().strftime("%H:%M:%S")
+-            log_line = f"[{timestamp}] {record.levelname}: {msg}"
+-            
+-            # This is a bit hacky, but lets us grab the active state
+-            state = ConductorState.load()
+-            state.add_log(log_line)
+-        except Exception:
+-            pass
+-
+-def start_viewer_server():
+-    PORT = 8080
+-    
+-    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+-        def __init__(self, *args, **kwargs):
+-            # We serve from root to allow access to session_state.json, but strictly filter in do_GET
+-            super().__init__(*args, **kwargs)
+-            
+-        def do_GET(self):
+-            # Strictly allow only viewer assets and the state file
+-            if not (self.path.startswith("/viewer") or self.path.startswith("/session_state.json")):
+-                self.send_error(403, "Forbidden")
+-                return
+-            
+-            # Explicitly block any directory traversal or sensitive files just in case
+-            if ".." in self.path or ".env" in self.path or ".py" in self.path or ".git" in self.path:
+-                self.send_error(403, "Forbidden")
+-                return
+-                
+-            super().do_GET()
+-
+-        def log_message(self, format, *args):
+-            pass
+-            
+-        def handle(self):
+-            try:
+-                super().handle()
+-            except (BrokenPipeError, ConnectionResetError):
+-                pass
+-
+-        def do_POST(self):
+-            expected_token = os.getenv("VIEWER_API_TOKEN")
+-            auth_header = self.headers.get("Authorization")
+-            
+-            if expected_token:
+-                if not auth_header or auth_header != f"Bearer {expected_token}":
+-                    self.send_response(401)
+-                    self.end_headers()
+-                    self.wfile.write(b"Unauthorized")
+-                    return
+-                    
+-            if self.path == "/api/steer":
+-                content_length = int(self.headers['Content-Length'])
+-                post_data = self.rfile.read(content_length)
+-                try:
+-                    import json
+-                    data = json.loads(post_data)
+-                    note = data.get("note")
+-                    if note:
+-                        state = ConductorState.load()
+-                        state.pending_steer.append(note)
+-                        state.save()
+-                        
+-                        self.send_response(200)
+-                        self.send_header('Content-type', 'application/json')
+-                        self.end_headers()
+-                        self.wfile.write(json.dumps({"status": "ok"}).encode())
+-                        return
+-                except Exception as e:
+-                    logger.error(f"Failed to process steering POST: {e}")
+-            
+-            if self.path == "/api/update":
+-                try:
+-                    import json
+-                    state = ConductorState.load()
+-                    state.update_scheduled = True
+-                    state.save()
+-                    with open(".pending_update_flag", "w") as f:
+-                        f.write("pending")
+-                    logger.warning("[bold yellow]UPDATE SIGNAL RECEIVED: Scheduling graceful restart...[/bold yellow]", extra={"markup": True})
+-                    
+-                    self.send_response(200)
+-                    self.send_header('Content-type', 'application/json')
+-                    self.end_headers()
+-                    self.wfile.write(json.dumps({"status": "update_scheduled"}).encode())
+-                    return
+-                except Exception as e:
+-                    logger.error(f"Failed to process update POST: {e}")
+-
+-            if self.path == "/api/shutdown":
+-                try:
+-                    import json
+-                    state = ConductorState.load()
+-                    state.shutdown_requested = True
+-                    state.save()
+-                    logger.warning("[bold red]EMERGENCY SHUTDOWN SIGNAL RECEIVED FROM UI[/bold red]", extra={"markup": True})
+-                    
+-                    self.send_response(200)
+-                    self.send_header('Content-type', 'application/json')
+-                    self.end_headers()
+-                    self.wfile.write(json.dumps({"status": "ok"}).encode())
+-                    return
+-                except Exception as e:
+-                    logger.error(f"Failed to process shutdown POST: {e}")
+-
+-            self.send_response(400)
+-            self.end_headers()
+-
+-    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+-        allow_reuse_address = True
+-            
+-    with ThreadingTCPServer(("", PORT), QuietHandler) as httpd:
+-        httpd.serve_forever()
+-
+-if __name__ == "__main__":
+-    parser = argparse.ArgumentParser(description="Start the Loom autonomous software factory.")
+-    parser.add_argument("--clean", action="store_true", help="Perform a full system clean slate before starting.")
+-    parser.add_argument("--mock", action="store_true", help="Use local Mock Jules (Gemini) instead of official API.")
+-    
+-    # Seeding arguments
+-    parser.add_argument("--name", type=str, help="Initial project name.")
+-    parser.add_argument("--goal", type=str, help="Initial inspiration goal.")
+-    parser.add_argument("--data-model", type=str, help="Initial PocketBase data model.")
+-    
+-    args = parser.parse_args()
+-
+-    if args.mock:
+-        os.environ["USE_MOCK_JULES"] = "true"
+-
+-    logger = logging.getLogger("loom")
+-    state_handler = StateLogHandler()
+-    logger.addHandler(state_handler)
+-    
+-    # Perform clean slate BEFORE doctor checks if requested
+-    if args.clean:
+-        clean_slate()
+-    
+-    # PocketBase hostname from environment
+-    pb_host = os.getenv("PB_HOSTNAME", "loom-pocketbase")
+-    
+-    # Doctor check after potential clean
+-    if not git_doctor() or not db_doctor(pb_host) or not doctor():
+-        import sys
+-        sys.exit(1)
+-    
+-    # Seed the state if arguments provided
+-    if args.name or args.goal or args.data_model:
+-        state = ConductorState.load()
+-        if args.name: state.project_name = args.name
+-        if args.goal: state.inspiration_goal = args.goal
+-        if args.data_model: state.inspiration_data_model = args.data_model
+-        state.save()
+-        logger.info(f"Seeded project state: Name={args.name}, Goal={args.goal}")
+-
+-    # Clear residual shutdown and update flags on startup
+-    state = ConductorState.load()
+-    needs_save = False
+-    if getattr(state, 'shutdown_requested', False):
+-        state.shutdown_requested = False
+-        state.current_status = "Idle"
+-        needs_save = True
+-        logger.info("Cleared residual emergency shutdown flag.")
+-    
+-    if getattr(state, 'update_scheduled', False):
+-        state.update_scheduled = False
+-        needs_save = True
+-        logger.info("Cleared residual update pending flag.")
+-
+-    if needs_save:
+-        state.save()
+-
+-    # Start the Dashboard Viewer server in the background
+-    viewer_thread = threading.Thread(target=start_viewer_server, daemon=True)
+-    viewer_thread.start()
+-    logger.info("[bold green]Observer Dashboard running at http://localhost:8080/viewer/[/bold green]", extra={"markup": True})
+-    
++    """Validates the environment before starting."""
++    logger.info("Running system check...")
++    required_keys = ["GEMINI_API_KEY", "STITCH_API_KEY", "STITCH_PROJECT_ID"]
++    
++    # Jules is only required if not mocking
++    if os.getenv("USE_MOCK_JULES", "").lower() != "true":
++        required_keys.append("JULES_API_KEY")
++        
++    missing = [key for key in required_keys if not os.getenv(key)]
++    
++    if missing:
++        logger.error(f"[bold red]System Check Failed! Missing API Keys: {', '.join(missing)}[/bold red]", extra={"markup": True})
++        logger.error("Please check your .env file.")
++        return False
++    
++    logger.info("[bold green]System Check Passed.[/bold green]", extra={"markup": True})
++    return True
++
++class StateLogHandler(logging.Handler):
++    def emit(self, record):
++        try:
++            import re
++            msg = self.format(record)
++            # Strip Rich markup tags so they don't show up literally in the web dashboard
++            msg = re.sub(r'\[/?bold.*?\]', '', msg)
++            
++            timestamp = datetime.now().strftime("%H:%M:%S")
++            log_line = f"[{timestamp}] {record.levelname}: {msg}"
++            
++            # This is a bit hacky, but lets us grab the active state
++            state = ConductorState.load()
++            state.add_log(log_line)
++        except Exception:
++            pass
++
++def start_viewer_server():
++    PORT = 8080
++    
++    class QuietHandler(http.server.SimpleHTTPRequestHandler):
++        def __init__(self, *args, **kwargs):
++            # We serve from root to allow access to session_state.json, but strictly filter in do_GET
++            super().__init__(*args, **kwargs)
++            
++        def do_GET(self):
++            # Strictly allow only viewer assets and the state file
++            if not (self.path.startswith("/viewer") or self.path.startswith("/session_state.json") or self.path.startswith("/execution_state.json")):
++                self.send_error(403, "Forbidden")
++                return
++            
++            # Explicitly block any directory traversal or sensitive files just in case
++            if ".." in self.path or ".env" in self.path or ".py" in self.path or ".git" in self.path:
++                self.send_error(403, "Forbidden")
++                return
++                
++            super().do_GET()
++
++        def log_message(self, format, *args):
++            pass
++            
++        def handle(self):
++            try:
++                super().handle()
++            except (BrokenPipeError, ConnectionResetError):
++                pass
++
++        def do_POST(self):
++            expected_token = os.getenv("VIEWER_API_TOKEN")
++            auth_header = self.headers.get("Authorization")
++            
++            if expected_token:
++                if not auth_header or auth_header != f"Bearer {expected_token}":
++                    self.send_response(401)
++                    self.end_headers()
++                    self.wfile.write(b"Unauthorized")
++                    return
++                    
++            if self.path == "/api/steer":
++                content_length = int(self.headers['Content-Length'])
++                post_data = self.rfile.read(content_length)
++                try:
++                    import json
++                    data = json.loads(post_data)
++                    note = data.get("note")
++                    if note:
++                        state = ConductorState.load()
++                        state.pending_steer.append(note)
++                        state.save()
++                        
++                        self.send_response(200)
++                        self.send_header('Content-type', 'application/json')
++                        self.end_headers()
++                        self.wfile.write(json.dumps({"status": "ok"}).encode())
++                        return
++                except Exception as e:
++                    logger.error(f"Failed to process steering POST: {e}")
++            
++            if self.path == "/api/update":
++                try:
++                    import json
++                    state = ConductorState.load()
++                    state.update_scheduled = True
++                    state.save()
++                    with open(".pending_update_flag", "w") as f:
++                        f.write("pending")
++                    logger.warning("[bold yellow]UPDATE SIGNAL RECEIVED: Scheduling graceful restart...[/bold yellow]", extra={"markup": True})
++                    
++                    self.send_response(200)
++                    self.send_header('Content-type', 'application/json')
++                    self.end_headers()
++                    self.wfile.write(json.dumps({"status": "update_scheduled"}).encode())
++                    return
++                except Exception as e:
++                    logger.error(f"Failed to process update POST: {e}")
++
++            if self.path == "/api/shutdown":
++                try:
++                    import json
++                    state = ConductorState.load()
++                    state.shutdown_requested = True
++                    state.save()
++                    logger.warning("[bold red]EMERGENCY SHUTDOWN SIGNAL RECEIVED FROM UI[/bold red]", extra={"markup": True})
++                    
++                    self.send_response(200)
++                    self.send_header('Content-type', 'application/json')
++                    self.end_headers()
++                    self.wfile.write(json.dumps({"status": "ok"}).encode())
++                    return
++                except Exception as e:
++                    logger.error(f"Failed to process shutdown POST: {e}")
++
++            self.send_response(400)
++            self.end_headers()
++
++    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
++        allow_reuse_address = True
++            
++    with ThreadingTCPServer(("", PORT), QuietHandler) as httpd:
++        httpd.serve_forever()
++
++if __name__ == "__main__":
++    parser = argparse.ArgumentParser(description="Start the Loom autonomous software factory.")
++    parser.add_argument("--clean", action="store_true", help="Perform a full system clean slate before starting.")
++    parser.add_argument("--mock", action="store_true", help="Use local Mock Jules (Gemini) instead of official API.")
++    
++    # Seeding arguments
++    parser.add_argument("--name", type=str, help="Initial project name.")
++    parser.add_argument("--goal", type=str, help="Initial inspiration goal.")
++    parser.add_argument("--data-model", type=str, help="Initial PocketBase data model.")
++    
++    args = parser.parse_args()
++
++    if args.mock:
++        os.environ["USE_MOCK_JULES"] = "true"
++
++    logger = logging.getLogger("loom")
++    state_handler = StateLogHandler()
++    logger.addHandler(state_handler)
++    
++    # Perform clean slate BEFORE doctor checks if requested
++    if args.clean:
++        clean_slate()
++    
++    # PocketBase hostname from environment
++    pb_host = os.getenv("PB_HOSTNAME", "loom-pocketbase")
++    
++    # Doctor check after potential clean
++    if not git_doctor() or not db_doctor(pb_host) or not doctor():
++        import sys
++        sys.exit(1)
++    
++    # Seed the state if arguments provided
++    if args.name or args.goal or args.data_model:
++        state = ConductorState.load()
++        if args.name: state.project_name = args.name
++        if args.goal: state.inspiration_goal = args.goal
++        if args.data_model: state.inspiration_data_model = args.data_model
++        state.save()
++        logger.info(f"Seeded project state: Name={args.name}, Goal={args.goal}")
++
++    # Clear residual shutdown and update flags on startup
++    state = ConductorState.load()
++    needs_save = False
++    if getattr(state, 'shutdown_requested', False):
++        state.shutdown_requested = False
++        state.current_status = "Idle"
++        needs_save = True
++        logger.info("Cleared residual emergency shutdown flag.")
++    
++    if getattr(state, 'update_scheduled', False):
++        state.update_scheduled = False
++        needs_save = True
++        logger.info("Cleared residual update pending flag.")
++
++    if needs_save:
++        state.save()
++
++    # Start the Dashboard Viewer server in the background
++    viewer_thread = threading.Thread(target=start_viewer_server, daemon=True)
++    viewer_thread.start()
++    logger.info("[bold green]Observer Dashboard running at http://localhost:8080/viewer/[/bold green]", extra={"markup": True})
++    
+     if os.getenv("BYPASS_OVERSEER") == "1":
+         logger.info("BYPASS_OVERSEER is set. Keeping Viewer UI server alive...")
+         import time
+diff --git a/session_state.json b/session_state.json
+index 6029d6f..07516eb 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -8,7 +8,7 @@
+   "current_iteration": 0,
+   "active_branch": "main",
+   "backlog": [],
+-  "active_task_id": "TEST-123",
++  "active_task_id": "TEST-1772912137079",
+   "inspiration_goal": "",
+   "inspiration_target_route": "/",
+   "inspiration_data_model": null,
+@@ -25,56 +25,15 @@
+   "current_phase": "Inspiration",
+   "pending_steer": [],
+   "steering_history": [],
+-  "live_logs": [],
++  "live_logs": [
++    "[19:25:10] INFO: Configuring Git identity...",
++    "[19:25:10] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[19:25:10] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[19:25:42] INFO: Configuring Git identity...",
++    "[19:25:42] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[19:25:42] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
++  ],
+   "shutdown_requested": false,
+   "update_scheduled": false,
+-  "db_stats": {},
+-  "ui_containers": [
+-    {
+-      "id": "1",
+-      "name": "loom-pocketbase",
+-      "status": "running",
+-      "image": "pocketbase/pocketbase",
+-      "ports": [
+-        "8090:8090"
+-      ]
+-    },
+-    {
+-      "id": "2",
+-      "name": "loom-python",
+-      "status": "running",
+-      "image": "python:3.11-slim",
+-      "ports": [
+-        "8080:8080"
+-      ]
+-    },
+-    {
+-      "id": "3",
+-      "name": "loom-react",
+-      "status": "running",
+-      "image": "node:20-alpine",
+-      "ports": [
+-        "5173:5173"
+-      ]
+-    }
+-  ],
+-  "ui_agents": [
+-    {
+-      "agentId": "jules-alpha",
+-      "state": "idle",
+-      "currentTask": "Task TEST-123",
+-      "happinessScore": 8
+-    },
+-    {
+-      "agentId": "overseer-beta",
+-      "state": "idle",
+-      "currentTask": "Phase: Inspiration",
+-      "happinessScore": 10
+-    }
+-  ],
+-  "ui_metrics": {
+-    "activeContainers": 3,
+-    "agentCount": 2,
+-    "systemHealth": 100
+-  }
++  "db_stats": {}
+ }
+\ No newline at end of file
+diff --git a/src/components/common/Header.tsx b/src/components/common/Header.tsx
+index a3178e6..2f0ab4c 100644
+--- a/src/components/common/Header.tsx
++++ b/src/components/common/Header.tsx
+@@ -4,14 +4,16 @@ export default function Header() {
+   const location = useLocation();
+ 
+   const getPageTitle = (pathname: string) => {
+-    switch (pathname) {
+-      case '/':
+-        return 'Dashboard';
+-      case '/agents':
+-        return 'Agents';
+-      default:
+-        return 'Unknown Route';
+-    }
++    if (pathname === '/') return 'Dashboard';
++    
++    // Remove leading slash and any trailing slash, then split by slash or dash
++    const cleanPath = pathname.replace(/^\/|\/$/g, '');
++    const segments = cleanPath.split(/[\/-]/);
++    
++    // Capitalize each word and join with a space
++    return segments
++      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
++      .join(' ');
+   };
+ 
+   return (
+diff --git a/src/hooks/useAgents.ts b/src/hooks/useAgents.ts
+index 2001c36..31b9bd9 100644
+--- a/src/hooks/useAgents.ts
++++ b/src/hooks/useAgents.ts
+@@ -1,11 +1,9 @@
+ import { useQuery } from '@tanstack/react-query';
+-import { fetchState } from '../services/api';
++import { executionQueryOptions } from './useOrchestration';
+ 
+ export function useAgents() {
+   return useQuery({
+-    queryKey: ['orchestrationState'],
+-    queryFn: fetchState,
++    ...executionQueryOptions,
+     select: (state) => state.ui_agents,
+-    refetchInterval: 5000,
+   });
+ }
+diff --git a/src/hooks/useContainers.ts b/src/hooks/useContainers.ts
+index 48a13d1..f810feb 100644
+--- a/src/hooks/useContainers.ts
++++ b/src/hooks/useContainers.ts
+@@ -1,11 +1,9 @@
+ import { useQuery } from '@tanstack/react-query';
+-import { fetchState } from '../services/api';
++import { executionQueryOptions } from './useOrchestration';
+ 
+ export function useContainers() {
+   return useQuery({
+-    queryKey: ['orchestrationState'],
+-    queryFn: fetchState,
++    ...executionQueryOptions,
+     select: (state) => state.ui_containers,
+-    refetchInterval: 5000,
+   });
+ }
+diff --git a/src/hooks/useMetrics.ts b/src/hooks/useMetrics.ts
+index 25d7573..c5e91be 100644
+--- a/src/hooks/useMetrics.ts
++++ b/src/hooks/useMetrics.ts
+@@ -1,11 +1,9 @@
+ import { useQuery } from '@tanstack/react-query';
+-import { fetchState } from '../services/api';
++import { executionQueryOptions } from './useOrchestration';
+ 
+ export function useMetrics() {
+   return useQuery({
+-    queryKey: ['orchestrationState'],
+-    queryFn: fetchState,
++    ...executionQueryOptions,
+     select: (state) => state.ui_metrics,
+-    refetchInterval: 5000,
+   });
+ }
+diff --git a/src/hooks/useOrchestration.ts b/src/hooks/useOrchestration.ts
+new file mode 100644
+index 0000000..8d68e35
+--- /dev/null
++++ b/src/hooks/useOrchestration.ts
+@@ -0,0 +1,27 @@
++import { useQuery } from '@tanstack/react-query';
++import { fetchProductState, fetchExecutionState } from '../services/api';
++import { ProductState, ExecutionState } from '../types/orchestration';
++
++export const productQueryOptions = {
++  queryKey: ['productState'],
++  queryFn: fetchProductState,
++  refetchInterval: 5000,
++};
++
++export const executionQueryOptions = {
++  queryKey: ['executionState'],
++  queryFn: fetchExecutionState,
++  refetchInterval: 5000,
++};
++
++export function useOrchestration() {
++  // Returns combined state to keep Dashboard from needing extensive changes
++  const { data: productData, ...productQuery } = useQuery<ProductState>(productQueryOptions);
++  const { data: executionData, ...executionQuery } = useQuery<ExecutionState>(executionQueryOptions);
++  
++  return {
++    data: productData && executionData ? { ...productData, ...executionData } : undefined,
++    isLoading: productQuery.isLoading || executionQuery.isLoading,
++    error: productQuery.error || executionQuery.error
++  };
++}
+diff --git a/src/services/api.ts b/src/services/api.ts
+index c619310..6af1ab9 100644
+--- a/src/services/api.ts
++++ b/src/services/api.ts
+@@ -1,9 +1,32 @@
+-import { SessionState } from '../types/orchestration';
++import { SessionState, ProductState, ExecutionState } from '../types/orchestration';
+ 
+-export const fetchState = async (): Promise<SessionState> => {
++export const fetchProductState = async (): Promise<ProductState> => {
+   const response = await fetch('/session_state.json');
+   if (!response.ok) {
+     throw new Error('Network response was not ok');
+   }
+   return response.json();
+ };
++
++export const fetchExecutionState = async (): Promise<ExecutionState> => {
++  const response = await fetch('/execution_state.json');
++  if (!response.ok) {
++    throw new Error('Network response was not ok');
++  }
++  return response.json();
++};
++
++export const fetchState = async (): Promise<SessionState> => {
++  const [productState, executionState] = await Promise.all([
++    fetchProductState(),
++    fetchExecutionState().catch(() => ({
++      // Provide fallback if execution state isn't written yet
++      schema_version: productState.schema_version || "1.0.0",
++      ui_containers: [],
++      ui_agents: [],
++      ui_metrics: { activeContainers: 0, agentCount: 0, systemHealth: 0 }
++    }))
++  ]);
++  
++  return { ...productState, ...executionState } as SessionState;
++};
+diff --git a/src/types/orchestration.ts b/src/types/orchestration.ts
+index c96dec7..caf0975 100644
+--- a/src/types/orchestration.ts
++++ b/src/types/orchestration.ts
+@@ -19,7 +19,62 @@ export interface OrchestrationMetrics {
+   systemHealth: number; // 0-100
+ }
+ 
+-export interface SessionState {
++export interface BacklogTask {
++  id: string;
++  type: 'feature' | 'refactor' | 'bugfix';
++  priority: number;
++  description: string;
++  target_route: string;
++  data_model?: string | null;
++  requires_design: boolean;
++  test_scenario: string;
++  context: string;
++  status: string;
++}
++
++export interface AttemptRecord {
++  attempt_number: number;
++  prompt_used: string;
++  app_screenshot_path?: string | null;
++  jules_patch_path?: string | null;
++  jules_url?: string | null;
++  jules_action?: string | null;
++  score: number;
++  critique: string;
++}
++
++export interface LoopIteration {
++  id: number;
++  timestamp: string;
++  goal: string;
++  target_route: string;
++  data_model?: string | null;
++  requires_design: boolean;
++  test_scenario?: string | null;
++  negative_history: string[];
++  brainstorming_output?: string | null;
++  base_briefs: string[];
++  base_seed_paths: (string | null)[];
++  base_variants_data?: any[] | null;
++  seed_review_critique?: string | null;
++  design_screenshot_path?: string | null;
++  design_variants_paths: (string | null)[];
++  layout_review_critique?: string | null;
++  chosen_design_path?: string | null;
++  design_review_critique?: string | null;
++  theme_variants_paths: (string | null)[];
++  chosen_theme_path?: string | null;
++  theme_review_critique?: string | null;
++  attempts: AttemptRecord[];
++  happiness_score: number;
++  successful_branch?: string | null;
++  abandoned: boolean;
++  architectural_critique?: string | null;
++  reflection_learnings?: string | null;
++  git_commit?: string | null;
++}
++
++export interface ProductState {
+   schema_version: string;
+   project_name: string;
+   app_meta: string;
+@@ -29,7 +84,7 @@ export interface SessionState {
+   current_iteration: number;
+   active_branch: string;
+   
+-  backlog: any[];
++  backlog: BacklogTask[];
+   active_task_id: string | null;
+   
+   inspiration_goal: string;
+@@ -39,7 +94,7 @@ export interface SessionState {
+   inspiration_mode: string;
+   inspiration_test_scenario: string;
+   
+-  history: any[];
++  history: LoopIteration[];
+   stitch_project_id: string | null;
+   stitch_screen_id: string | null;
+   active_jules_prompt: string | null;
+@@ -48,13 +103,19 @@ export interface SessionState {
+   current_status: string;
+   current_phase: string;
+   pending_steer: string[];
+-  steering_history: any[];
++  steering_history: Record<string, any>[];
+   live_logs: string[];
+   shutdown_requested: boolean;
+   update_scheduled: boolean;
+-  db_stats: Record<string, any>;
+-  
++  db_stats: Record<string, number>;
++}
++
++export interface ExecutionState {
++  schema_version: string;
+   ui_containers: DockerContainer[];
+   ui_agents: AgentStatus[];
+   ui_metrics: OrchestrationMetrics;
+ }
++
++// Keep SessionState as a union for backward compatibility in components if needed
++export type SessionState = ProductState & ExecutionState;
+diff --git a/tests/verify.spec.ts b/tests/verify.spec.ts
+index 1cab97e..b52b725 100644
+--- a/tests/verify.spec.ts
++++ b/tests/verify.spec.ts
+@@ -18,6 +18,16 @@ test('App initializes correctly and renders dashboard components', async ({ page
+   await page.screenshot({ path: 'evidence.png' });
+ });
+ 
++test('Header renders dynamic title correctly based on route', async ({ page }) => {
++  // Test Dashboard route
++  await page.goto('/');
++  await expect(page.locator('header h2')).toHaveText('Dashboard', { timeout: 10000 });
++  
++  // Test Agents route
++  await page.goto('/agents');
++  await expect(page.locator('header h2')).toHaveText('Agents', { timeout: 10000 });
++});
++
+ test('App fetches data independently avoiding useOrchestration god hook', async ({ page }) => {
+   await page.goto('/');
+ 
+@@ -31,27 +41,34 @@ test('App fetches data independently avoiding useOrchestration god hook', async
+   await expect(page.locator('.lucide-users').first()).toBeVisible(); // Agent icon
+ });
+ 
+-test('Trigger an agentic state update and verify the generated state perfectly matches the new strictly versioned JSON schema without relying on React for logic.', async ({ page }) => {
++test('Trigger an agentic state update and verify the generated state is split into product and execution states matching the new strictly versioned schema.', async ({ page }) => {
++  // Use a dynamic ID to avoid false positives from stale files
++  const dynamicTaskId = `TEST-${Date.now()}`;
++  
+   // Trigger state update directly via Python backend to ensure it's generated natively
+-  execSync('python3 -c "from loom.core.state import ConductorState; state = ConductorState.load(); state.active_task_id = \'TEST-123\'; state.current_status = \'Active\'; state.save()"');
++  execSync(`python3 -c "from loom.core.state import ConductorState; state = ConductorState.load(); state.active_task_id = '${dynamicTaskId}'; state.current_status = 'Active'; state.save()"`);
+ 
+-  // Read the state JSON file directly from the filesystem
++  // Read the state JSON files directly from the filesystem
+   const statePath = path.resolve('session_state.json');
+   const stateRaw = fs.readFileSync(statePath, 'utf8');
+-  const state = JSON.parse(stateRaw);
++  const productState = JSON.parse(stateRaw);
++  
++  const execPath = path.resolve('execution_state.json');
++  const execRaw = fs.readFileSync(execPath, 'utf8');
++  const execState = JSON.parse(execRaw);
+ 
+-  // Verify the schema version exists and is "1.0.0"
+-  expect(state.schema_version).toBe('1.0.0');
+-  expect(state.active_task_id).toBe('TEST-123');
++  // Verify the product schema version exists and is "1.0.0"
++  expect(productState.schema_version).toBe('1.0.0');
++  expect(productState.active_task_id).toBe(dynamicTaskId);
+   
+-  // Verify that the UI representation fields exist and are populated by Python
+-  expect(state.ui_containers).toBeDefined();
+-  expect(state.ui_agents).toBeDefined();
+-  expect(state.ui_metrics).toBeDefined();
++  // Verify that the UI representation fields exist in execution_state.json
++  expect(execState.ui_containers).toBeDefined();
++  expect(execState.ui_agents).toBeDefined();
++  expect(execState.ui_metrics).toBeDefined();
+   
+   // Verify a specific piece of the mapped data to prove domain logic is handled by backend
+-  expect(state.ui_agents[0].currentTask).toBe('Task TEST-123');
+-  expect(state.ui_metrics.agentCount).toBe(2);
++  expect(execState.ui_agents[0].currentTask).toBe(`Task ${dynamicTaskId}`);
++  expect(execState.ui_metrics.agentCount).toBe(2);
+ 
+   // Take screenshot as evidence
+   await page.goto('/');

@@ -1,0 +1,129 @@
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 1bd0401..db7feb6 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -76,7 +76,7 @@ test('Trigger an agentic state update and verify the generated state is split in
+   
+   // Verify the camelCase mapped DTO is used correctly by the components
+   // the AgentCard renders happinessScore: `text-emerald-400">{agent.happinessScore}/10`
+-  await expect(page.locator('.text-emerald-500').first()).toContainText('/10');
++  await expect(page.locator('.text-emerald-400').first()).toContainText('/10');
+   
+   await page.screenshot({ path: 'evidence.png' });
+ });
+diff --git a/execution_state.json b/execution_state.json
+new file mode 100644
+index 0000000..537ec4c
+--- /dev/null
++++ b/execution_state.json
+@@ -0,0 +1,51 @@
++{
++  "schema_version": "1.0.0",
++  "ui_containers": [
++    {
++      "id": "1",
++      "name": "loom-pocketbase",
++      "status": "running",
++      "image": "pocketbase/pocketbase",
++      "ports": [
++        "8090:8090"
++      ]
++    },
++    {
++      "id": "2",
++      "name": "loom-python",
++      "status": "running",
++      "image": "python:3.11-slim",
++      "ports": [
++        "8080:8080"
++      ]
++    },
++    {
++      "id": "3",
++      "name": "loom-react",
++      "status": "running",
++      "image": "node:20-alpine",
++      "ports": [
++        "5173:5173"
++      ]
++    }
++  ],
++  "ui_agents": [
++    {
++      "agentId": "jules-alpha",
++      "state": "idle",
++      "currentTask": "Task TEST-1772939061579",
++      "happinessScore": 8
++    },
++    {
++      "agentId": "overseer-beta",
++      "state": "idle",
++      "currentTask": "Phase: Inspiration",
++      "happinessScore": 10
++    }
++  ],
++  "ui_metrics": {
++    "activeContainers": 3,
++    "agentCount": 2,
++    "systemHealth": 100
++  }
++}
+\ No newline at end of file
+diff --git a/session_state.json b/session_state.json
+new file mode 100644
+index 0000000..d8e4ee0
+--- /dev/null
++++ b/session_state.json
+@@ -0,0 +1,51 @@
++{
++  "schema_version": "1.0.0",
++  "project_name": "Loom Experiment",
++  "app_meta": "",
++  "product_phase": "Phase 1: Core Loop MVP",
++  "product_roadmap": "",
++  "repo_memory": {},
++  "current_iteration": 0,
++  "active_branch": "main",
++  "backlog": [],
++  "active_task_id": "TEST-1772939061579",
++  "inspiration_goal": "",
++  "inspiration_target_route": "/",
++  "inspiration_data_model": null,
++  "inspiration_requires_design": true,
++  "inspiration_mode": "design",
++  "inspiration_test_scenario": "",
++  "history": [],
++  "stitch_project_id": null,
++  "stitch_screen_id": null,
++  "active_jules_prompt": null,
++  "active_jules_url": null,
++  "active_jules_action": null,
++  "current_status": "Active",
++  "current_phase": "Inspiration",
++  "pending_steer": [],
++  "steering_history": [],
++  "live_logs": [
++    "[03:00:25] INFO: Configuring Git identity...",
++    "[03:00:25] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:00:25] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[03:00:36] INFO: Configuring Git identity...",
++    "[03:00:36] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:00:36] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[03:01:37] INFO: Configuring Git identity...",
++    "[03:01:37] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:01:37] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[03:01:51] INFO: Configuring Git identity...",
++    "[03:01:51] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:01:51] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[03:03:04] INFO: Configuring Git identity...",
++    "[03:03:04] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:03:04] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[03:04:16] INFO: Configuring Git identity...",
++    "[03:04:16] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[03:04:16] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
++  ],
++  "shutdown_requested": false,
++  "update_scheduled": false,
++  "db_stats": {}
++}
+\ No newline at end of file

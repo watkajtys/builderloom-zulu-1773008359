@@ -1,0 +1,405 @@
+diff --git a/app/package-lock.json b/app/package-lock.json
+index bb43e3c..1453bfa 100644
+--- a/app/package-lock.json
++++ b/app/package-lock.json
+@@ -8,12 +8,12 @@
+       "name": "app",
+       "version": "0.0.0",
+       "dependencies": {
+-        "@tanstack/react-query": "^4.36.1",
++        "@tanstack/react-query": "^4.43.0",
+         "lucide-react": "^0.454.0",
+         "pocketbase": "^0.21.1",
+-        "react": "^18.2.0",
+-        "react-dom": "^18.2.0",
+-        "react-router-dom": "^6.22.3"
++        "react": "^19.0.0",
++        "react-dom": "^19.0.0",
++        "react-router-dom": "^7.0.0"
+       },
+       "devDependencies": {
+         "@playwright/test": "^1.58.2",
+@@ -884,15 +884,6 @@
+         "node": ">=18"
+       }
+     },
+-    "node_modules/@remix-run/router": {
+-      "version": "1.23.2",
+-      "resolved": "https://registry.npmjs.org/@remix-run/router/-/router-1.23.2.tgz",
+-      "integrity": "sha512-Ic6m2U/rMjTkhERIa/0ZtXJP17QUi2CbWE7cqx4J58M8aA3QTfW+2UlQ4psvTX9IO1RfNVhK3pcpdjej7L+t2w==",
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=14.0.0"
+-      }
+-    },
+     "node_modules/@rolldown/pluginutils": {
+       "version": "1.0.0-beta.27",
+       "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-beta.27.tgz",
+@@ -1251,9 +1242,9 @@
+       ]
+     },
+     "node_modules/@tanstack/query-core": {
+-      "version": "4.36.1",
+-      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-4.36.1.tgz",
+-      "integrity": "sha512-DJSilV5+ytBP1FbFcEJovv4rnnm/CokuVvrBEtW/Va9DvuJ3HksbXUJEpI0aV1KtuL4ZoO9AVE6PyNLzF7tLeA==",
++      "version": "4.43.0",
++      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-4.43.0.tgz",
++      "integrity": "sha512-m1QeUUIpNXDYxmfuuWNFZLky0EwVmbE0hj8ulZ2nIGA1183raJgDCn0IKlxug80NotRqzodxAaoYTKHbE1/P/Q==",
+       "license": "MIT",
+       "funding": {
+         "type": "github",
+@@ -1261,21 +1252,21 @@
+       }
+     },
+     "node_modules/@tanstack/react-query": {
+-      "version": "4.36.1",
+-      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-4.36.1.tgz",
+-      "integrity": "sha512-y7ySVHFyyQblPl3J3eQBWpXZkliroki3ARnBKsdJchlgt7yJLRDUcf4B8soufgiYt3pEQIkBWBx1N9/ZPIeUWw==",
++      "version": "4.43.0",
++      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-4.43.0.tgz",
++      "integrity": "sha512-Lj8luFKHQL27oZbw5T8xdTbsfAPp2+bCtSCa2bAVvIwnvNfRP0hpB1GxfKFgCktat8lPcYBHAu8eMTXzz2sQtQ==",
+       "license": "MIT",
+       "dependencies": {
+-        "@tanstack/query-core": "4.36.1",
+-        "use-sync-external-store": "^1.2.0"
++        "@tanstack/query-core": "4.43.0",
++        "use-sync-external-store": "^1.6.0"
+       },
+       "funding": {
+         "type": "github",
+         "url": "https://github.com/sponsors/tannerlinsley"
+       },
+       "peerDependencies": {
+-        "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
+-        "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0",
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
++        "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+         "react-native": "*"
+       },
+       "peerDependenciesMeta": {
+@@ -2097,6 +2088,19 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/cookie": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/cookie/-/cookie-1.1.1.tgz",
++      "integrity": "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
+     "node_modules/cssesc": {
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
+@@ -2896,6 +2900,7 @@
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/js-tokens/-/js-tokens-4.0.0.tgz",
+       "integrity": "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==",
++      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/jsesc": {
+@@ -2961,18 +2966,6 @@
+         "url": "https://github.com/sponsors/sindresorhus"
+       }
+     },
+-    "node_modules/loose-envify": {
+-      "version": "1.4.0",
+-      "resolved": "https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz",
+-      "integrity": "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "js-tokens": "^3.0.0 || ^4.0.0"
+-      },
+-      "bin": {
+-        "loose-envify": "cli.js"
+-      }
+-    },
+     "node_modules/lru-cache": {
+       "version": "5.1.1",
+       "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-5.1.1.tgz",
+@@ -3671,28 +3664,24 @@
+       }
+     },
+     "node_modules/react": {
+-      "version": "18.2.0",
+-      "resolved": "https://registry.npmjs.org/react/-/react-18.2.0.tgz",
+-      "integrity": "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==",
++      "version": "19.2.4",
++      "resolved": "https://registry.npmjs.org/react/-/react-19.2.4.tgz",
++      "integrity": "sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==",
+       "license": "MIT",
+-      "dependencies": {
+-        "loose-envify": "^1.1.0"
+-      },
+       "engines": {
+         "node": ">=0.10.0"
+       }
+     },
+     "node_modules/react-dom": {
+-      "version": "18.2.0",
+-      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz",
+-      "integrity": "sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==",
++      "version": "19.2.4",
++      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.4.tgz",
++      "integrity": "sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ==",
+       "license": "MIT",
+       "dependencies": {
+-        "loose-envify": "^1.1.0",
+-        "scheduler": "^0.23.0"
++        "scheduler": "^0.27.0"
+       },
+       "peerDependencies": {
+-        "react": "^18.2.0"
++        "react": "^19.2.4"
+       }
+     },
+     "node_modules/react-refresh": {
+@@ -3706,35 +3695,41 @@
+       }
+     },
+     "node_modules/react-router": {
+-      "version": "6.30.3",
+-      "resolved": "https://registry.npmjs.org/react-router/-/react-router-6.30.3.tgz",
+-      "integrity": "sha512-XRnlbKMTmktBkjCLE8/XcZFlnHvr2Ltdr1eJX4idL55/9BbORzyZEaIkBFDhFGCEWBBItsVrDxwx3gnisMitdw==",
++      "version": "7.13.1",
++      "resolved": "https://registry.npmjs.org/react-router/-/react-router-7.13.1.tgz",
++      "integrity": "sha512-td+xP4X2/6BJvZoX6xw++A2DdEi++YypA69bJUV5oVvqf6/9/9nNlD70YO1e9d3MyamJEBQFEzk6mbfDYbqrSA==",
+       "license": "MIT",
+       "dependencies": {
+-        "@remix-run/router": "1.23.2"
++        "cookie": "^1.0.1",
++        "set-cookie-parser": "^2.6.0"
+       },
+       "engines": {
+-        "node": ">=14.0.0"
++        "node": ">=20.0.0"
+       },
+       "peerDependencies": {
+-        "react": ">=16.8"
++        "react": ">=18",
++        "react-dom": ">=18"
++      },
++      "peerDependenciesMeta": {
++        "react-dom": {
++          "optional": true
++        }
+       }
+     },
+     "node_modules/react-router-dom": {
+-      "version": "6.30.3",
+-      "resolved": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-6.30.3.tgz",
+-      "integrity": "sha512-pxPcv1AczD4vso7G4Z3TKcvlxK7g7TNt3/FNGMhfqyntocvYKj+GCatfigGDjbLozC4baguJ0ReCigoDJXb0ag==",
++      "version": "7.13.1",
++      "resolved": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-7.13.1.tgz",
++      "integrity": "sha512-UJnV3Rxc5TgUPJt2KJpo1Jpy0OKQr0AjgbZzBFjaPJcFOb2Y8jA5H3LT8HUJAiRLlWrEXWHbF1Z4SCZaQjWDHw==",
+       "license": "MIT",
+       "dependencies": {
+-        "@remix-run/router": "1.23.2",
+-        "react-router": "6.30.3"
++        "react-router": "7.13.1"
+       },
+       "engines": {
+-        "node": ">=14.0.0"
++        "node": ">=20.0.0"
+       },
+       "peerDependencies": {
+-        "react": ">=16.8",
+-        "react-dom": ">=16.8"
++        "react": ">=18",
++        "react-dom": ">=18"
+       }
+     },
+     "node_modules/read-cache": {
+@@ -3977,13 +3972,10 @@
+       }
+     },
+     "node_modules/scheduler": {
+-      "version": "0.23.2",
+-      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.2.tgz",
+-      "integrity": "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "loose-envify": "^1.1.0"
+-      }
++      "version": "0.27.0",
++      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz",
++      "integrity": "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==",
++      "license": "MIT"
+     },
+     "node_modules/semver": {
+       "version": "6.3.1",
+@@ -3995,6 +3987,12 @@
+         "semver": "bin/semver.js"
+       }
+     },
++    "node_modules/set-cookie-parser": {
++      "version": "2.7.2",
++      "resolved": "https://registry.npmjs.org/set-cookie-parser/-/set-cookie-parser-2.7.2.tgz",
++      "integrity": "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==",
++      "license": "MIT"
++    },
+     "node_modules/signal-exit": {
+       "version": "3.0.7",
+       "resolved": "https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz",
+diff --git a/app/package.json b/app/package.json
+index 0b5d578..a0ef655 100644
+--- a/app/package.json
++++ b/app/package.json
+@@ -11,12 +11,12 @@
+     "test:e2e": "playwright test"
+   },
+   "dependencies": {
+-    "@tanstack/react-query": "^4.36.1",
++    "@tanstack/react-query": "^4.43.0",
+     "lucide-react": "^0.454.0",
+     "pocketbase": "^0.21.1",
+-    "react": "^18.2.0",
+-    "react-dom": "^18.2.0",
+-    "react-router-dom": "^6.22.3"
++    "react": "^19.0.0",
++    "react-dom": "^19.0.0",
++    "react-router-dom": "^7.0.0"
+   },
+   "devDependencies": {
+     "@playwright/test": "^1.58.2",
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 5d85c5d..2dbeeb1 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -174,6 +174,21 @@ except Exception as e:
+   await page.screenshot({ path: 'evidence.png' });
+ });
+ 
++test('Verify fixing of @tanstack/react-query import error from previous attempts', async ({ page }) => {
++  // Since we had an issue resolving @tanstack/react-query due to missing dependencies, 
++  // ensuring the root application mounts successfully verifies that our package.json 
++  // alignment correctly passes the Rollup module resolution.
++  const packageJsonPath = path.resolve(__dirname, '../../package.json');
++  const packageRaw = fs.readFileSync(packageJsonPath, 'utf8');
++  expect(packageRaw).toContain('@tanstack/react-query');
++
++  await page.goto('http://127.0.0.1:5173/');
++  // Verify main text renders correctly to ensure that the React Query Providers mounted successfully.
++  await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
++  
++  await page.screenshot({ path: 'evidence.png' });
++});
++
+ test('Verify that test runner does not delete or pollute the main session_state.json and execution_state.json files', async ({ page }) => {
+   console.log('Testing that test_core.py execution keeps original state files intact');
+   
+diff --git a/package-lock.json b/package-lock.json
+index 2bdf031..5417839 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -8,6 +8,7 @@
+       "name": "app",
+       "version": "0.0.0",
+       "dependencies": {
++        "@tanstack/react-query": "^4.43.0",
+         "lucide-react": "^0.454.0",
+         "pocketbase": "^0.21.1",
+         "react": "^19.0.0",
+@@ -1223,6 +1224,43 @@
+         "win32"
+       ]
+     },
++    "node_modules/@tanstack/query-core": {
++      "version": "4.43.0",
++      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-4.43.0.tgz",
++      "integrity": "sha512-m1QeUUIpNXDYxmfuuWNFZLky0EwVmbE0hj8ulZ2nIGA1183raJgDCn0IKlxug80NotRqzodxAaoYTKHbE1/P/Q==",
++      "license": "MIT",
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/tannerlinsley"
++      }
++    },
++    "node_modules/@tanstack/react-query": {
++      "version": "4.43.0",
++      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-4.43.0.tgz",
++      "integrity": "sha512-Lj8luFKHQL27oZbw5T8xdTbsfAPp2+bCtSCa2bAVvIwnvNfRP0hpB1GxfKFgCktat8lPcYBHAu8eMTXzz2sQtQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@tanstack/query-core": "4.43.0",
++        "use-sync-external-store": "^1.6.0"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/tannerlinsley"
++      },
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
++        "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
++        "react-native": "*"
++      },
++      "peerDependenciesMeta": {
++        "react-dom": {
++          "optional": true
++        },
++        "react-native": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/@types/babel__core": {
+       "version": "7.20.5",
+       "resolved": "https://registry.npmjs.org/@types/babel__core/-/babel__core-7.20.5.tgz",
+@@ -2729,6 +2767,15 @@
+         "browserslist": ">= 4.21.0"
+       }
+     },
++    "node_modules/use-sync-external-store": {
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz",
++      "integrity": "sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==",
++      "license": "MIT",
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
++      }
++    },
+     "node_modules/util-deprecate": {
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+diff --git a/package.json b/package.json
+index 029d819..1268b5e 100644
+--- a/package.json
++++ b/package.json
+@@ -11,6 +11,7 @@
+     "test:e2e": "playwright test"
+   },
+   "dependencies": {
++    "@tanstack/react-query": "^4.43.0",
+     "lucide-react": "^0.454.0",
+     "pocketbase": "^0.21.1",
+     "react": "^19.0.0",
+diff --git a/session_state.json b/session_state.json
+index cbc1902..f97dc6c 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -28,7 +28,7 @@
+   "current_iteration": 0,
+   "active_branch": "main",
+   "backlog": [],
+-  "active_task_id": "TEST-1772997101549",
++  "active_task_id": "TEST-1772998200239",
+   "inspiration_goal": "",
+   "inspiration_target_route": "/",
+   "inspiration_data_model": null,
+diff --git a/vite.config.ts b/vite.config.ts
+index f653c41..fe383ca 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -5,5 +5,5 @@ export default defineConfig({
+   root: 'app',
+   server: { host: '127.0.0.1' },
+   plugins: [react()],
+-  build: { outDir: '../dist' },
++  build: { outDir: '../dist', emptyOutDir: true },
+ })

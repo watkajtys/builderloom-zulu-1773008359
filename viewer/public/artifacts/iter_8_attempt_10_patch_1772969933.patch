@@ -1,0 +1,68 @@
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 8af74ed..202b07f 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -255,7 +255,7 @@ state.save()
+   await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
+   
+   // Ensure the logs are visible first
+-  const thoughtLog = page.locator('text=This is a thought that should be hidden when filtered.');
++  const thoughtLog = page.locator('text=This is a thought that should be hidden when filtered.').first();
+   await expect(thoughtLog).toBeVisible({ timeout: 5000 });
+ 
+   // Toggle off SYSTEM_INFO filter so info/thought logs hide
+@@ -266,7 +266,7 @@ state.save()
+   await expect(thoughtLog).toBeHidden({ timeout: 5000 });
+ 
+   // Click CRITICAL_ERR which activates error only
+-  const errorLog = page.locator('text=This is a critical system error that should remain visible.');
++  const errorLog = page.locator('text=This is a critical system error that should remain visible.').first();
+   
+   // Assert 'error' log remains visible (since CRITICAL_ERR is on by default, and we only disabled SYSTEM_INFO)
+   await expect(errorLog).toBeVisible({ timeout: 5000 });
+diff --git a/session_state.json b/session_state.json
+index 37a0324..3229e9f 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -3,16 +3,16 @@
+   "version": "v1.1",
+   "logs": [
+     {
+-      "id": "2a6bc463-c401-4d6d-905d-9a388ed29cba",
+-      "timestamp": "2026-03-08T10:21:31.547440Z",
++      "id": "c10a36d5-11fb-4906-abf4-2e85e03df986",
++      "timestamp": "2026-03-08T11:37:03.247622Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "Starting Telemetry Loop",
+       "metadata": {}
+     },
+     {
+-      "id": "f21ba119-8dfc-43b6-bf96-b82295f43f33",
+-      "timestamp": "2026-03-08T10:21:31.548936Z",
++      "id": "7fe23289-f0fa-4199-9e77-812989ea3f4e",
++      "timestamp": "2026-03-08T11:37:03.248753Z",
+       "agent": "overseer",
+       "level": "error",
+       "message": "Intentional exception to test telemetry",
+@@ -21,16 +21,16 @@
+       }
+     },
+     {
+-      "id": "34c88137-97cf-4232-8c1e-c3cdee5a2445",
+-      "timestamp": "2026-03-08T10:21:32.460021Z",
++      "id": "b38313bf-b5f3-4724-ad04-6ede0e79b5e0",
++      "timestamp": "2026-03-08T11:37:04.459037Z",
+       "agent": "test_runner",
+       "level": "error",
+       "message": "This is a critical system error that should remain visible.",
+       "metadata": {}
+     },
+     {
+-      "id": "a7c041a3-5728-4547-8609-6653a49f887d",
+-      "timestamp": "2026-03-08T10:21:32.460829Z",
++      "id": "2b7d56f6-462f-4748-9175-2f95d2d12f14",
++      "timestamp": "2026-03-08T11:37:04.460078Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "This is a thought that should be hidden when filtered.",

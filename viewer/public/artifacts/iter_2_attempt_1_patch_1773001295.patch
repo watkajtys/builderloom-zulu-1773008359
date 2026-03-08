@@ -1,0 +1,274 @@
+diff --git a/app/src/pages/Telemetry.tsx b/app/src/pages/Telemetry.tsx
+index 4d2f0f0..ed1fc96 100644
+--- a/app/src/pages/Telemetry.tsx
++++ b/app/src/pages/Telemetry.tsx
+@@ -43,17 +43,17 @@ export default function Telemetry() {
+         
+         // Let's do one more try to fetch from the API that the dashboard might use
+         try {
+-            const res = await fetch('http://127.0.0.1:8080/state'); // Loom Python backend
++            const res = await fetch('http://127.0.0.1:8080/api/logs'); // Loom Python backend structured logs
+             if (res.ok) {
+                 const data = await res.json();
+-                setVersion(data.version || 'v1.1');
+-                setLogs(data.logs || []);
++                setVersion('v1.1');
++                setLogs(data || []);
+                 setError(null);
+                 return;
+             }
+         } catch(e) {}
+         
+-        throw new Error("Cannot fetch telemetry data. PocketBase collection not found and Python backend unreachable.");
++        throw new Error("Cannot fetch telemetry data. PocketBase collection not found and Python backend API unreachable.");
+       } catch (err: any) {
+         setError(err.message);
+       } finally {
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 765bc8d..78f5851 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -335,3 +335,63 @@ if __name__ == "__main__":
+   try { await page.goto('/'); } catch (e) {}
+   await page.screenshot({ path: 'evidence.png' });
+ });
++
++test('Perform a GET request to the log endpoint and assert that a correct JSON array of the latest structured log events is returned.', async ({ page }) => {
++  const dynamicTaskId = `TEST-API-${Date.now()}`;
++  
++  const pyScript = `
++import os
++import sys
++
++os.chdir(os.path.abspath('.'))
++sys.path.insert(0, os.path.abspath('.'))
++
++from backend.state import ConductorState
++
++state = ConductorState.load()
++state.emit_telemetry(agent="test_api_agent", level="info", message="Testing /api/logs", metadata={"test_id": "${dynamicTaskId}"})
++state.save()
++`;
++
++  fs.writeFileSync('/tmp/test_api_log.py', pyScript);
++  execSync('python3 -m pip install -r requirements.txt > /dev/null 2>&1 && PYTHONPATH=. python3 /tmp/test_api_log.py', { cwd: path.resolve(__dirname, '../../') });
++  
++  // Actually start the backend API server temporarily for the test
++  const { spawn } = await import('child_process');
++  const serverProcess = spawn('python3', ['main.py', '--mock'], {
++    cwd: path.resolve(__dirname, '../../'),
++    detached: true,
++    env: { ...process.env, BYPASS_OVERSEER: '1' } // keep server running, skip overseer loop
++  });
++
++  // Wait for server to start
++  await new Promise(resolve => setTimeout(resolve, 2000));
++
++  try {
++    const response = await page.request.get('http://127.0.0.1:8080/api/logs');
++    expect(response.ok()).toBeTruthy();
++    
++    const logs = await response.json();
++    expect(Array.isArray(logs)).toBe(true);
++    
++    // Assert that the latest log is our structured event
++    const testLog = logs.find((l: any) => l.metadata && l.metadata.test_id === `${dynamicTaskId}`);
++    expect(testLog).toBeDefined();
++    expect(testLog.agent).toBe("test_api_agent");
++    expect(testLog.level).toBe("info");
++    expect(testLog.message).toBe("Testing /api/logs");
++  } finally {
++    // Ensure we kill the test server
++    try {
++      process.kill(-serverProcess.pid);
++    } catch (e) {}
++  }
++
++  // Load UI for screenshot
++  try {
++    await page.goto('/backend/telemetry');
++    await page.waitForTimeout(1000);
++  } catch(e) {}
++
++  await page.screenshot({ path: 'evidence.png' });
++});
+diff --git a/execution_state.json b/execution_state.json
+new file mode 100644
+index 0000000..f865743
+--- /dev/null
++++ b/execution_state.json
+@@ -0,0 +1,51 @@
++{
++  "schema_version": "1.0.0",
++  "ui_containers": [
++    {
++      "id": "1",
++      "name": "loom-pocketbase",
++      "status": "running",
++      "image": "pocketbase/pocketbase",
++      "ports": [
++        "8090:8090"
++      ]
++    },
++    {
++      "id": "2",
++      "name": "loom-python",
++      "status": "running",
++      "image": "python:3.11-slim",
++      "ports": [
++        "8080:8080"
++      ]
++    },
++    {
++      "id": "3",
++      "name": "loom-react",
++      "status": "running",
++      "image": "node:20-alpine",
++      "ports": [
++        "5173:5173"
++      ]
++    }
++  ],
++  "ui_agents": [
++    {
++      "agentId": "jules-alpha",
++      "state": "idle",
++      "currentTask": "Waiting for task",
++      "happinessScore": 10
++    },
++    {
++      "agentId": "overseer-beta",
++      "state": "idle",
++      "currentTask": "Phase: Inspiration",
++      "happinessScore": 10
++    }
++  ],
++  "ui_metrics": {
++    "activeContainers": 3,
++    "agentCount": 2,
++    "systemHealth": 100
++  }
++}
+\ No newline at end of file
+diff --git a/main.py b/main.py
+index fe9eeea..588f1aa 100644
+--- a/main.py
++++ b/main.py
+@@ -240,6 +240,23 @@ def start_viewer_server():
+                     pass
+                 return
+ 
++            if self.path == "/api/logs":
++                try:
++                    state = ConductorState.load()
++                    import json
++                    logs_json = json.dumps(state.logs)
++                    self.send_response(200)
++                    self.send_header('Content-Type', 'application/json')
++                    # Add CORS header so frontend can fetch it directly
++                    self.send_header('Access-Control-Allow-Origin', '*')
++                    self.end_headers()
++                    self.wfile.write(logs_json.encode('utf-8'))
++                    return
++                except Exception as e:
++                    logger.error(f"Failed to serve logs: {e}")
++                    self.send_error(500, "Internal Server Error")
++                    return
++
+             if self.path == "/api/session_state":
+                 try:
+                     state = ConductorState.load()
+diff --git a/patch_verify.js b/patch_verify.js
+new file mode 100644
+index 0000000..e3bbbfe
+--- /dev/null
++++ b/patch_verify.js
+@@ -0,0 +1,4 @@
++const fs = require('fs');
++let content = fs.readFileSync('app/tests/verify.spec.ts', 'utf8');
++content = content.replace("const serverProcess = require('child_process').spawn('python3',", "const serverProcess = require('node:child_process').spawn('python3',");
++fs.writeFileSync('app/tests/verify.spec.ts', content);
+diff --git a/session_state.json b/session_state.json
+new file mode 100644
+index 0000000..8640676
+--- /dev/null
++++ b/session_state.json
+@@ -0,0 +1,77 @@
++{
++  "schema_version": "1.0.0",
++  "version": "v1.1",
++  "logs": [
++    {
++      "id": "42ecb124-c2e8-429e-a9cf-5931ee544513",
++      "timestamp": "2026-03-08T20:17:18.784931Z",
++      "agent": "TestAgent",
++      "level": "info",
++      "message": "Visual verification of structured logs UI",
++      "metadata": {}
++    },
++    {
++      "id": "f077131c-a54c-48fd-81c7-96a9b8027452",
++      "timestamp": "2026-03-08T20:17:18.785813Z",
++      "agent": "TestAgent",
++      "level": "error",
++      "message": "Testing error styling",
++      "metadata": {}
++    },
++    {
++      "id": "e1547b52-cc46-4858-9418-ca8c9b845df6",
++      "timestamp": "2026-03-08T20:17:47.003596Z",
++      "agent": "test",
++      "level": "info",
++      "message": "Visual verification of structured logs UI",
++      "metadata": {}
++    },
++    {
++      "id": "36e6ea1a-34e7-4e0f-8f4d-c2596bbc331e",
++      "timestamp": "2026-03-08T20:18:06.336867Z",
++      "agent": "test",
++      "level": "info",
++      "message": "Visual verification of structured logs UI",
++      "metadata": {}
++    }
++  ],
++  "project_name": "Loom Experiment",
++  "app_meta": "",
++  "product_phase": "Phase 1: Core Loop MVP",
++  "product_roadmap": "",
++  "repo_memory": {},
++  "current_iteration": 0,
++  "active_branch": "main",
++  "backlog": [],
++  "active_task_id": null,
++  "inspiration_goal": "",
++  "inspiration_target_route": "/",
++  "inspiration_data_model": null,
++  "inspiration_requires_design": true,
++  "inspiration_mode": "design",
++  "inspiration_test_scenario": "",
++  "history": [],
++  "stitch_project_id": null,
++  "stitch_screen_id": null,
++  "active_jules_prompt": null,
++  "active_jules_url": null,
++  "active_jules_action": null,
++  "current_status": "Idle",
++  "current_phase": "Inspiration",
++  "pending_steer": [],
++  "steering_history": [],
++  "live_logs": [
++    "[20:17:16] INFO: Configuring Git identity...",
++    "[20:17:16] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[20:17:16] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[20:17:45] INFO: Configuring Git identity...",
++    "[20:17:45] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[20:17:45] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[20:18:05] INFO: Configuring Git identity...",
++    "[20:18:05] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[20:18:05] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
++  ],
++  "shutdown_requested": false,
++  "update_scheduled": false,
++  "db_stats": {}
++}
+\ No newline at end of file

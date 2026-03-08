@@ -1,0 +1,151 @@
+diff --git a/app/playwright.config.ts b/app/playwright.config.ts
+index 44845c7..75deb1f 100644
+--- a/app/playwright.config.ts
++++ b/app/playwright.config.ts
+@@ -2,10 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
+ 
+ export default defineConfig({
+   testDir: './tests',
+-  fullyParallel: true,
++  fullyParallel: false,
+   forbidOnly: !!process.env.CI,
+   retries: process.env.CI ? 2 : 0,
+-  workers: process.env.CI ? 1 : undefined,
++  workers: 1, // Ensure sequential execution to prevent state file race conditions
+   reporter: 'html',
+   use: {
+     baseURL: 'http://127.0.0.1:5173',
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 202b07f..275fd9f 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -286,3 +286,65 @@ test('Verify dynamic import was removed and application fetches JSON properly av
+   await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
+   await page.screenshot({ path: 'evidence.png' });
+ });
++
++test('Verify React Viewer UI correctly consumes, displays, and filters structured JSON logs', async ({ page }) => {
++  // Setup the mock state file for this test
++  const testLogs = [
++    {
++      "id": "log-1",
++      "timestamp": "2024-03-08T12:00:00Z",
++      "agent": "test-agent",
++      "level": "error",
++      "message": "Structured error log test",
++      "metadata": {"reason": "testing"}
++    },
++    {
++      "id": "log-2",
++      "timestamp": "2024-03-08T12:00:05Z",
++      "agent": "test-agent",
++      "level": "info",
++      "message": "Structured info log test"
++    }
++  ];
++  
++  const pyScript = `
++import os
++import sys
++import json
++
++os.chdir(os.path.abspath('.'))
++sys.path.insert(0, os.path.abspath('.'))
++
++from backend.state import ConductorState
++
++state = ConductorState.load()
++state.logs = ${JSON.stringify(testLogs)}
++state.save()
++`;
++  
++  fs.writeFileSync('/tmp/test_viewer_ui_logs.py', pyScript);
++  execSync('python3 -m pip install -r requirements.txt && PYTHONPATH=. python3 /tmp/test_viewer_ui_logs.py', { cwd: path.resolve(__dirname, '../../') });
++  
++  await page.goto('/');
++  await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
++  
++  // Verify that the error log is rendered
++  const errorLogLocator = page.locator('text=Structured error log test').first();
++  await expect(errorLogLocator).toBeVisible({ timeout: 5000 });
++  
++  // Verify that the info log is rendered
++  const infoLogLocator = page.locator('text=Structured info log test').first();
++  await expect(infoLogLocator).toBeVisible({ timeout: 5000 });
++  
++  // Test filtering interaction
++  const infoFilterSpan = page.locator('text=LVL: SYSTEM_INFO');
++  await infoFilterSpan.click();
++  
++  // Assert 'info' log is hidden after toggling off SYSTEM_INFO
++  await expect(infoLogLocator).toBeHidden({ timeout: 5000 });
++  // Ensure error log is still visible
++  await expect(errorLogLocator).toBeVisible({ timeout: 5000 });
++
++  // Take screenshot as evidence
++  await page.screenshot({ path: 'evidence.png' });
++});
+diff --git a/app/vite.config.ts b/app/vite.config.ts
+index b01059c..3067977 100644
+--- a/app/vite.config.ts
++++ b/app/vite.config.ts
+@@ -4,6 +4,7 @@ import fs from 'fs'
+ import path from 'path'
+ 
+ export default defineConfig({
++  base: '',
+   server: { host: '127.0.0.1' },
+   plugins: [
+     react(),
+diff --git a/session_state.json b/session_state.json
+index 3229e9f..bace027 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -3,38 +3,21 @@
+   "version": "v1.1",
+   "logs": [
+     {
+-      "id": "c10a36d5-11fb-4906-abf4-2e85e03df986",
+-      "timestamp": "2026-03-08T11:37:03.247622Z",
+-      "agent": "test_runner",
+-      "level": "info",
+-      "message": "Starting Telemetry Loop",
+-      "metadata": {}
+-    },
+-    {
+-      "id": "7fe23289-f0fa-4199-9e77-812989ea3f4e",
+-      "timestamp": "2026-03-08T11:37:03.248753Z",
+-      "agent": "overseer",
++      "id": "log-1",
++      "timestamp": "2024-03-08T12:00:00Z",
++      "agent": "test-agent",
+       "level": "error",
+-      "message": "Intentional exception to test telemetry",
++      "message": "Structured error log test",
+       "metadata": {
+-        "traceback": "Traceback (most recent call last):\n  File \"/tmp/test_telemetry.py\", line 21, in loop\n    raise ValueError(\"Intentional exception to test telemetry\")\nValueError: Intentional exception to test telemetry\n"
++        "reason": "testing"
+       }
+     },
+     {
+-      "id": "b38313bf-b5f3-4724-ad04-6ede0e79b5e0",
+-      "timestamp": "2026-03-08T11:37:04.459037Z",
+-      "agent": "test_runner",
+-      "level": "error",
+-      "message": "This is a critical system error that should remain visible.",
+-      "metadata": {}
+-    },
+-    {
+-      "id": "2b7d56f6-462f-4748-9175-2f95d2d12f14",
+-      "timestamp": "2026-03-08T11:37:04.460078Z",
+-      "agent": "test_runner",
++      "id": "log-2",
++      "timestamp": "2024-03-08T12:00:05Z",
++      "agent": "test-agent",
+       "level": "info",
+-      "message": "This is a thought that should be hidden when filtered.",
+-      "metadata": {}
++      "message": "Structured info log test"
+     }
+   ],
+   "project_name": "Loom Experiment",

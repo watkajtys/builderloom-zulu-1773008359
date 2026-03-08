@@ -1,0 +1,481 @@
+diff --git a/playwright.config.ts b/playwright.config.ts
+index addf59b..65f09a3 100644
+--- a/playwright.config.ts
++++ b/playwright.config.ts
+@@ -8,12 +8,12 @@ export default defineConfig({
+   workers: process.env.CI ? 1 : undefined,
+   reporter: 'html',
+   use: {
+-    baseURL: 'http://127.0.0.1:8080',
++    baseURL: 'http://127.0.0.1:5173',
+     trace: 'on-first-retry',
+   },
+   webServer: {
+-    command: 'MAX_RETRIES=1 BYPASS_OVERSEER=1 python3 main.py',
+-    url: 'http://127.0.0.1:8080/viewer/',
++    command: 'npm run dev',
++    url: 'http://127.0.0.1:5173',
+     reuseExistingServer: true,
+     timeout: 120000,
+   },
+diff --git a/session_state.json b/session_state.json
+index 1f839ae..8a49443 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -39,7 +39,13 @@
+     "[18:02:24] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
+     "[18:07:49] INFO: Configuring Git identity...",
+     "[18:07:49] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
+-    "[18:07:49] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
++    "[18:07:49] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:17:16] INFO: Configuring Git identity...",
++    "[18:17:16] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:17:16] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive...",
++    "[18:18:01] INFO: Configuring Git identity...",
++    "[18:18:01] INFO: Observer Dashboard running at http://localhost:8080/viewer/",
++    "[18:18:01] INFO: BYPASS_OVERSEER is set. Keeping Viewer UI server alive..."
+   ],
+   "shutdown_requested": false,
+   "update_scheduled": false,
+diff --git a/src/components/Layout.tsx b/src/components/Layout.tsx
+index 8598c45..11a32c8 100644
+--- a/src/components/Layout.tsx
++++ b/src/components/Layout.tsx
+@@ -10,6 +10,11 @@ export default function Layout({ children }: { children: ReactNode }) {
+     { name: 'Agents', path: '/agents', icon: Users },
+   ];
+ 
++  const getPageTitle = (pathname: string) => {
++    const item = navItems.find((nav) => nav.path === pathname);
++    return item ? item.name : 'Unknown Route';
++  };
++
+   return (
+     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans">
+       {/* Sidebar */}
+@@ -57,7 +62,7 @@ export default function Layout({ children }: { children: ReactNode }) {
+       <main className="flex-1 flex flex-col overflow-hidden relative">
+         <header className="h-16 border-b border-slate-800 bg-slate-900/30 flex items-center px-8 shrink-0 backdrop-blur-sm">
+           <h2 className="text-lg font-semibold text-white capitalize">
+-            {location.pathname === '/' ? 'Dashboard' : location.pathname.substring(1)}
++            {getPageTitle(location.pathname)}
+           </h2>
+         </header>
+         <div className="flex-1 overflow-auto p-8">
+diff --git a/src/components/domain/AgentCard.tsx b/src/components/domain/AgentCard.tsx
+new file mode 100644
+index 0000000..d215fbb
+--- /dev/null
++++ b/src/components/domain/AgentCard.tsx
+@@ -0,0 +1,75 @@
++import { AgentStatus } from '../../types/orchestration';
++import { Users } from 'lucide-react';
++
++interface AgentCardProps {
++  agent: AgentStatus;
++  compact?: boolean;
++}
++
++export default function AgentCard({ agent, compact = false }: AgentCardProps) {
++  if (compact) {
++    return (
++      <li className="p-4 hover:bg-slate-800/50 transition-colors flex flex-col gap-3">
++        <div className="flex items-center justify-between">
++          <div className="flex items-center gap-3">
++            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
++              <Users size={16} />
++            </div>
++            <span className="font-mono text-sm text-slate-200">{agent.agentId}</span>
++          </div>
++          <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
++            Score: {agent.happinessScore}
++          </span>
++        </div>
++        <div className="bg-slate-950 p-3 rounded border border-slate-800 flex flex-col gap-2">
++          <div className="flex items-center justify-between">
++            <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Status</span>
++            <span className="text-xs font-mono text-fuchsia-400 flex items-center gap-2">
++              {agent.state === 'coding' && <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>}
++              {agent.state}
++            </span>
++          </div>
++          {agent.currentTask && (
++            <div className="border-l-2 border-slate-700 pl-3">
++              <p className="text-xs text-slate-400 font-mono italic">"{agent.currentTask}"</p>
++            </div>
++          )}
++        </div>
++      </li>
++    );
++  }
++
++  // Expanded version
++  return (
++    <li className="p-6 hover:bg-slate-800/50 transition-colors">
++      <div className="flex items-center justify-between mb-4">
++        <div className="flex items-center gap-4">
++          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
++            <Users size={24} />
++          </div>
++          <div>
++            <h3 className="font-mono text-lg font-bold text-slate-200">{agent.agentId}</h3>
++            <div className="flex gap-2 mt-1">
++              <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase bg-slate-950 text-slate-400 border border-slate-800">
++                {agent.state}
++              </span>
++            </div>
++          </div>
++        </div>
++        <div className="text-right">
++          <p className="text-xs text-slate-500 uppercase font-mono mb-1">Happiness</p>
++          <p className="text-xl font-bold text-emerald-400">{agent.happinessScore}/10</p>
++        </div>
++      </div>
++      
++      {agent.currentTask && (
++        <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
++          <p className="text-xs text-slate-500 font-mono mb-2 uppercase tracking-widest">Current Task</p>
++          <p className="text-sm text-slate-300 font-mono">
++            {agent.currentTask}
++          </p>
++        </div>
++      )}
++    </li>
++  );
++}
+diff --git a/src/components/domain/AgentList.tsx b/src/components/domain/AgentList.tsx
+new file mode 100644
+index 0000000..dbba7dc
+--- /dev/null
++++ b/src/components/domain/AgentList.tsx
+@@ -0,0 +1,38 @@
++import { AgentStatus } from '../../types/orchestration';
++import AgentCard from './AgentCard';
++
++interface AgentListProps {
++  agents: AgentStatus[];
++  compact?: boolean;
++}
++
++export default function AgentList({ agents, compact = false }: AgentListProps) {
++  if (compact) {
++    return (
++      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
++        <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
++          <h2 className="text-sm font-semibold text-slate-200">Active Agents</h2>
++        </div>
++        <div className="p-0">
++          <ul className="divide-y divide-slate-800">
++            {agents.map((agent) => (
++              <AgentCard key={agent.agentId} agent={agent} compact={true} />
++            ))}
++          </ul>
++        </div>
++      </div>
++    );
++  }
++
++  return (
++    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
++      <div className="p-0">
++        <ul className="divide-y divide-slate-800">
++          {agents.map((agent) => (
++            <AgentCard key={agent.agentId} agent={agent} compact={false} />
++          ))}
++        </ul>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/domain/ContainerList.tsx b/src/components/domain/ContainerList.tsx
+new file mode 100644
+index 0000000..3fffce4
+--- /dev/null
++++ b/src/components/domain/ContainerList.tsx
+@@ -0,0 +1,39 @@
++import { DockerContainer } from '../../types/orchestration';
++
++interface ContainerListProps {
++  containers: DockerContainer[];
++}
++
++export default function ContainerList({ containers }: ContainerListProps) {
++  return (
++    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
++      <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
++        <h2 className="text-sm font-semibold text-slate-200">Container Infrastructure</h2>
++        <span className="px-2 py-1 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
++          {containers.length} nodes
++        </span>
++      </div>
++      <div className="p-0">
++        <ul className="divide-y divide-slate-800">
++          {containers.map((container) => (
++            <li key={container.id} className="p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between group">
++              <div className="flex items-center gap-4">
++                <div className={`w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] ${container.status === 'running' ? 'bg-emerald-400 text-emerald-400' : 'bg-red-400 text-red-400'}`}></div>
++                <div>
++                  <p className="font-mono text-sm text-slate-200">{container.name}</p>
++                  <p className="text-xs text-slate-500 font-mono mt-1">{container.image}</p>
++                </div>
++              </div>
++              <div className="text-right flex flex-col items-end gap-1">
++                <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${container.status === 'running' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
++                  {container.status}
++                </span>
++                <span className="text-xs text-slate-600 font-mono">{container.ports.join(', ')}</span>
++              </div>
++            </li>
++          ))}
++        </ul>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/hooks/useOrchestration.ts b/src/hooks/useOrchestration.ts
+index 1879839..0af6a36 100644
+--- a/src/hooks/useOrchestration.ts
++++ b/src/hooks/useOrchestration.ts
+@@ -7,12 +7,14 @@ export function useOrchestration() {
+   const [agents, setAgents] = useState<AgentStatus[]>([]);
+   const [metrics, setMetrics] = useState<OrchestrationMetrics | null>(null);
+   const [loading, setLoading] = useState<boolean>(true);
++  const [error, setError] = useState<string | null>(null);
+ 
+   useEffect(() => {
+     let mounted = true;
+ 
+     async function loadData() {
+       setLoading(true);
++      setError(null);
+       try {
+         const [c, a, m] = await Promise.all([
+           fetchContainers(),
+@@ -25,8 +27,11 @@ export function useOrchestration() {
+           setAgents(a);
+           setMetrics(m);
+         }
+-      } catch (error) {
+-        console.error('Failed to load orchestration data', error);
++      } catch (err) {
++        if (mounted) {
++          setError('Failed to load orchestration data from the factory.');
++          console.error('Failed to load orchestration data', err);
++        }
+       } finally {
+         if (mounted) setLoading(false);
+       }
+@@ -43,5 +48,5 @@ export function useOrchestration() {
+     };
+   }, []);
+ 
+-  return { containers, agents, metrics, loading };
++  return { containers, agents, metrics, loading, error };
+ }
+diff --git a/src/pages/Agents.tsx b/src/pages/Agents.tsx
+index ae08e27..83c0bb7 100644
+--- a/src/pages/Agents.tsx
++++ b/src/pages/Agents.tsx
+@@ -1,8 +1,9 @@
+ import { useOrchestration } from '../hooks/useOrchestration';
+-import { Users, Loader2 } from 'lucide-react';
++import AgentList from '../components/domain/AgentList';
++import { Loader2, AlertCircle } from 'lucide-react';
+ 
+ export default function Agents() {
+-  const { agents, loading } = useOrchestration();
++  const { agents, loading, error } = useOrchestration();
+ 
+   if (loading && !agents.length) {
+     return (
+@@ -19,44 +20,17 @@ export default function Agents() {
+         <p className="text-slate-400 text-sm">Manage and inspect autonomous agent instances.</p>
+       </div>
+       
+-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+-        <div className="p-0">
+-          <ul className="divide-y divide-slate-800">
+-            {agents.map((agent) => (
+-              <li key={agent.agentId} className="p-6 hover:bg-slate-800/50 transition-colors">
+-                <div className="flex items-center justify-between mb-4">
+-                  <div className="flex items-center gap-4">
+-                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
+-                      <Users size={24} />
+-                    </div>
+-                    <div>
+-                      <h3 className="font-mono text-lg font-bold text-slate-200">{agent.agentId}</h3>
+-                      <div className="flex gap-2 mt-1">
+-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase bg-slate-950 text-slate-400 border border-slate-800">
+-                          {agent.state}
+-                        </span>
+-                      </div>
+-                    </div>
+-                  </div>
+-                  <div className="text-right">
+-                    <p className="text-xs text-slate-500 uppercase font-mono mb-1">Happiness</p>
+-                    <p className="text-xl font-bold text-emerald-400">{agent.happinessScore}/10</p>
+-                  </div>
+-                </div>
+-                
+-                {agent.currentTask && (
+-                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+-                    <p className="text-xs text-slate-500 font-mono mb-2 uppercase tracking-widest">Current Task</p>
+-                    <p className="text-sm text-slate-300 font-mono">
+-                      {agent.currentTask}
+-                    </p>
+-                  </div>
+-                )}
+-              </li>
+-            ))}
+-          </ul>
++      {error && (
++        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 text-red-400">
++          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
++          <div>
++            <h3 className="text-sm font-semibold">Orchestration Error</h3>
++            <p className="text-xs text-red-400/80 mt-1">{error}</p>
++          </div>
+         </div>
+-      </div>
++      )}
++
++      <AgentList agents={agents} compact={false} />
+     </div>
+   );
+ }
+diff --git a/src/pages/Dashboard.tsx b/src/pages/Dashboard.tsx
+index d7a5bd4..512658e 100644
+--- a/src/pages/Dashboard.tsx
++++ b/src/pages/Dashboard.tsx
+@@ -1,9 +1,11 @@
+ import { useOrchestration } from '../hooks/useOrchestration';
+ import StatCard from '../components/StatCard';
+-import { Server, Users, Activity, Loader2 } from 'lucide-react';
++import ContainerList from '../components/domain/ContainerList';
++import AgentList from '../components/domain/AgentList';
++import { Server, Users, Activity, Loader2, AlertCircle } from 'lucide-react';
+ 
+ export default function Dashboard() {
+-  const { containers, agents, metrics, loading } = useOrchestration();
++  const { containers, agents, metrics, loading, error } = useOrchestration();
+ 
+   if (loading && !metrics) {
+     return (
+@@ -22,6 +24,16 @@ export default function Dashboard() {
+         </div>
+       </div>
+ 
++      {error && (
++        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 text-red-400">
++          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
++          <div>
++            <h3 className="text-sm font-semibold">Orchestration Error</h3>
++            <p className="text-xs text-red-400/80 mt-1">{error}</p>
++          </div>
++        </div>
++      )}
++
+       {/* Overview Metrics */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <StatCard
+@@ -47,75 +59,10 @@ export default function Dashboard() {
+ 
+       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+         {/* Docker Containers Card */}
+-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+-          <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
+-            <h2 className="text-sm font-semibold text-slate-200">Container Infrastructure</h2>
+-            <span className="px-2 py-1 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+-              {containers.length} nodes
+-            </span>
+-          </div>
+-          <div className="p-0">
+-            <ul className="divide-y divide-slate-800">
+-              {containers.map((container) => (
+-                <li key={container.id} className="p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between group">
+-                  <div className="flex items-center gap-4">
+-                    <div className={`w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] ${container.status === 'running' ? 'bg-emerald-400 text-emerald-400' : 'bg-red-400 text-red-400'}`}></div>
+-                    <div>
+-                      <p className="font-mono text-sm text-slate-200">{container.name}</p>
+-                      <p className="text-xs text-slate-500 font-mono mt-1">{container.image}</p>
+-                    </div>
+-                  </div>
+-                  <div className="text-right flex flex-col items-end gap-1">
+-                    <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${container.status === 'running' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+-                      {container.status}
+-                    </span>
+-                    <span className="text-xs text-slate-600 font-mono">{container.ports.join(', ')}</span>
+-                  </div>
+-                </li>
+-              ))}
+-            </ul>
+-          </div>
+-        </div>
++        <ContainerList containers={containers} />
+ 
+         {/* Agents Card */}
+-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+-          <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
+-            <h2 className="text-sm font-semibold text-slate-200">Active Agents</h2>
+-          </div>
+-          <div className="p-0">
+-            <ul className="divide-y divide-slate-800">
+-              {agents.map((agent) => (
+-                <li key={agent.agentId} className="p-4 hover:bg-slate-800/50 transition-colors flex flex-col gap-3">
+-                  <div className="flex items-center justify-between">
+-                    <div className="flex items-center gap-3">
+-                      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+-                        <Users size={16} />
+-                      </div>
+-                      <span className="font-mono text-sm text-slate-200">{agent.agentId}</span>
+-                    </div>
+-                    <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+-                      Score: {agent.happinessScore}
+-                    </span>
+-                  </div>
+-                  <div className="bg-slate-950 p-3 rounded border border-slate-800 flex flex-col gap-2">
+-                    <div className="flex items-center justify-between">
+-                      <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Status</span>
+-                      <span className="text-xs font-mono text-fuchsia-400 flex items-center gap-2">
+-                        {agent.state === 'coding' && <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>}
+-                        {agent.state}
+-                      </span>
+-                    </div>
+-                    {agent.currentTask && (
+-                      <div className="border-l-2 border-slate-700 pl-3">
+-                        <p className="text-xs text-slate-400 font-mono italic">"{agent.currentTask}"</p>
+-                      </div>
+-                    )}
+-                  </div>
+-                </li>
+-              ))}
+-            </ul>
+-          </div>
+-        </div>
++        <AgentList agents={agents} compact={true} />
+       </div>
+     </div>
+   );
+diff --git a/tests/verify.spec.ts b/tests/verify.spec.ts
+index c843696..197dfa4 100644
+--- a/tests/verify.spec.ts
++++ b/tests/verify.spec.ts
+@@ -1,7 +1,16 @@
+ import { test, expect } from '@playwright/test';
+ 
+-test('App initializes correctly', async ({ page }) => {
+-  await page.goto('/viewer/');
++test('App initializes correctly and renders dashboard components', async ({ page }) => {
++  await page.goto('/');
++  
++  // Wait for the main title
+   await expect(page.locator('h1:has-text("BuilderLoom")')).toBeVisible();
++
++  // Wait for the components to load (useOrchestration takes some time to resolve mock data)
++  // Wait for the Active Agents and Container Infrastructure headers which we moved to subcomponents
++  await expect(page.locator('h2:has-text("Container Infrastructure")')).toBeVisible({ timeout: 10000 });
++  await expect(page.locator('h2:has-text("Active Agents")')).toBeVisible({ timeout: 10000 });
++
++  // Take screenshot as evidence
+   await page.screenshot({ path: 'evidence.png' });
+ });

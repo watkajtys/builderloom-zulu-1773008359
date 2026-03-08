@@ -1,0 +1,37 @@
+diff --git a/loom/core/overseer.py b/loom/core/overseer.py
+index bdf95f6..b36c6dc 100644
+--- a/loom/core/overseer.py
++++ b/loom/core/overseer.py
+@@ -11,7 +11,10 @@ from enum import Enum
+ from datetime import datetime
+ from pathlib import Path
+ 
+-import google.generativeai as genai
++import warnings
++with warnings.catch_warnings():
++    warnings.simplefilter("ignore")
++    import google.generativeai as genai
+ from google.api_core import exceptions
+ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+ from dotenv import load_dotenv
+diff --git a/main.py b/main.py
+index b9be61c..2d726fe 100644
+--- a/main.py
++++ b/main.py
+@@ -131,6 +131,7 @@ def start_viewer_server():
+     class QuietHandler(http.server.SimpleHTTPRequestHandler):
+         def __init__(self, *args, **kwargs):
+             # We serve from root to allow access to session_state.json, but strictly filter in do_GET
++            kwargs['directory'] = os.path.dirname(os.path.abspath(__file__))
+             super().__init__(*args, **kwargs)
+             
+         def log_message(self, format, *args):
+@@ -283,7 +284,7 @@ def start_viewer_server():
+                 return
+                 
+             # If serving from the dist directory after Vite build
+-            if self.path == "/" or self.path == "/viewer/" or self.path == "/agents" or self.path == "/viewer/agents" or self.path == "/index.html":
++            if self.path == "/" or self.path == "/viewer/" or self.path == "/agents" or self.path == "/viewer/agents" or self.path == "/index.html" or self.path == "/viewer/index.html":
+                 self.path = "/dist/index.html"
+             elif self.path.startswith("/assets/"):
+                 self.path = "/dist" + self.path

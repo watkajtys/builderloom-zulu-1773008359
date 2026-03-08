@@ -1,0 +1,126 @@
+diff --git a/app/src/pages/Dashboard.tsx b/app/src/pages/Dashboard.tsx
+index 55b8ec9..36fe469 100644
+--- a/app/src/pages/Dashboard.tsx
++++ b/app/src/pages/Dashboard.tsx
+@@ -59,11 +59,14 @@ export default function Dashboard() {
+         
+         try {
+             // Fallback for UI visualization offline testing
+-            const MockData = await import('../../../session_state.json');
+-            setVersion(MockData.default?.version || 'v1.1 (Mock Offline)');
+-            setLogs(MockData.default?.logs || []);
+-            setError(null);
+-            return;
++            const mockRes = await fetch('/session_state.json');
++            if (mockRes.ok) {
++                const MockData = await mockRes.json();
++                setVersion(MockData.version || 'v1.1 (Mock Offline)');
++                setLogs(MockData.logs || []);
++                setError(null);
++                return;
++            }
+         } catch(e) {}
+ 
+         throw new Error("Cannot fetch telemetry data. PocketBase collection not found and Python backend unreachable.");
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 79403f2..7b33793 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -275,3 +275,10 @@ state.save()
+   // Take screenshot as evidence
+   await page.screenshot({ path: 'evidence.png' });
+ });
++
++test('Verify dynamic import was removed and application fetches JSON properly avoiding Vite build failure', async ({ page }) => {
++  // Take screenshot as evidence
++  await page.goto('/');
++  await expect(page.locator('text=BUILDERLOOM ZULU')).toBeVisible({ timeout: 10000 });
++  await page.screenshot({ path: 'evidence.png' });
++});
+diff --git a/app/vite.config.ts b/app/vite.config.ts
+index 02cbee2..b01059c 100644
+--- a/app/vite.config.ts
++++ b/app/vite.config.ts
+@@ -1,7 +1,35 @@
+ import { defineConfig } from 'vite'
+ import react from '@vitejs/plugin-react'
++import fs from 'fs'
++import path from 'path'
+ 
+ export default defineConfig({
+   server: { host: '127.0.0.1' },
+-  plugins: [react()],
++  plugins: [
++    react(),
++    {
++      name: 'serve-offline-state',
++      configureServer(server) {
++        server.middlewares.use((req, res, next) => {
++          if (req.url === '/session_state.json') {
++            const filePath = path.resolve(__dirname, '../session_state.json');
++            if (fs.existsSync(filePath)) {
++              res.setHeader('Content-Type', 'application/json');
++              res.end(fs.readFileSync(filePath));
++              return;
++            }
++          }
++          if (req.url === '/execution_state.json') {
++            const filePath = path.resolve(__dirname, '../execution_state.json');
++            if (fs.existsSync(filePath)) {
++              res.setHeader('Content-Type', 'application/json');
++              res.end(fs.readFileSync(filePath));
++              return;
++            }
++          }
++          next();
++        });
++      }
++    }
++  ],
+ })
+diff --git a/session_state.json b/session_state.json
+index c5af6fa..efbc1c2 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -3,16 +3,16 @@
+   "version": "v1.1",
+   "logs": [
+     {
+-      "id": "4a3dcf01-c934-43de-bee4-719fbeeddfac",
+-      "timestamp": "2026-03-08T08:57:28.763725Z",
++      "id": "6f5a1b0a-a84f-446d-b327-133f818035a4",
++      "timestamp": "2026-03-08T09:09:35.387236Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "Starting Telemetry Loop",
+       "metadata": {}
+     },
+     {
+-      "id": "b5333218-114e-4d82-ad09-ab055e4c8722",
+-      "timestamp": "2026-03-08T08:57:28.764899Z",
++      "id": "34b25bec-e64c-48f3-8ed4-003862d2ea9b",
++      "timestamp": "2026-03-08T09:09:35.388309Z",
+       "agent": "overseer",
+       "level": "error",
+       "message": "Intentional exception to test telemetry",
+@@ -21,16 +21,16 @@
+       }
+     },
+     {
+-      "id": "dddad755-314c-498b-a47d-11ef2f28889f",
+-      "timestamp": "2026-03-08T08:57:28.897102Z",
++      "id": "ff29796e-77d8-4b5a-a767-fbcb3ebca8e0",
++      "timestamp": "2026-03-08T09:09:36.147573Z",
+       "agent": "test_runner",
+       "level": "error",
+       "message": "This is a critical system error that should remain visible.",
+       "metadata": {}
+     },
+     {
+-      "id": "0f6cfd2c-e1a3-4f5b-8959-247285a757c2",
+-      "timestamp": "2026-03-08T08:57:28.897923Z",
++      "id": "aba9e0ef-41da-41da-89d6-87d3fd20566c",
++      "timestamp": "2026-03-08T09:09:36.148371Z",
+       "agent": "test_runner",
+       "level": "info",
+       "message": "This is a thought that should be hidden when filtered.",

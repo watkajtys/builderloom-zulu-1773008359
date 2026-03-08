@@ -1,0 +1,395 @@
+diff --git a/backend/state.py b/backend/state.py
+index 21ac0ad..34f13b3 100644
+--- a/backend/state.py
++++ b/backend/state.py
+@@ -41,7 +41,7 @@ class AttemptRecord(BaseModel):
+     jules_patch_path: Optional[str] = None
+     jules_url: Optional[str] = None
+     jules_action: Optional[str] = None
+-    score: int
++    score: float
+     critique: str
+ 
+ class LoopIteration(BaseModel):
+@@ -67,7 +67,7 @@ class LoopIteration(BaseModel):
+     chosen_theme_path: Optional[str] = None
+     theme_review_critique: Optional[str] = None
+     attempts: List[AttemptRecord] = []
+-    happiness_score: int = 0  # Final score of this iteration
++    happiness_score: float = 0.0  # Final score of this iteration
+     successful_branch: Optional[str] = None
+     abandoned: bool = False
+     architectural_critique: Optional[str] = None
+diff --git a/loom/agents/architect.py b/loom/agents/architect.py
+index 727883c..fdee71f 100644
+--- a/loom/agents/architect.py
++++ b/loom/agents/architect.py
+@@ -111,7 +111,7 @@ class ArchitectAgent(AgentProxy): # pylint: disable=too-few-public-methods
+ 
+         return source_code, total_files, largest_file
+ 
+-    def evaluate(self, app_meta: str, app_dir: str = "app") -> Tuple[int, str, List[Dict]]:
++    def evaluate(self, app_meta: str, app_dir: str = "app") -> Tuple[float, str, List[Dict]]:
+         """
+         Evaluates the full codebase architecture by generating a dependency graph,
+         collecting source code, and requesting an architectural review from the LLM.
+@@ -176,18 +176,18 @@ FULL CODEBASE:
+ 
+             try:
+                 data = self._parse_json(review_text)
+-                score = data.get("score", 5)
++                score = float(data.get("score", 5.0))
+                 critique = data.get("critique", "No critique provided.")
+                 priorities = data.get("refactoring_priorities", [])
+             except (ValueError, json.JSONDecodeError) as e:
+                 logger.warning("Failed to parse Architect JSON: %s", e)
+-                score = 5
++                score = 5.0
+                 critique = review_text
+                 priorities = []
+ 
+-            score = max(1, min(10, score))
++            score = max(1.0, min(10.0, score))
+             return score, critique, priorities
+ 
+         except Exception as e: # pylint: disable=broad-exception-caught
+             logger.error("Failed to evaluate architecture: %s", e)
+-            return 5, f"Architectural evaluation failed: {str(e)}", []
++            return 5.0, f"Architectural evaluation failed: {str(e)}", []
+diff --git a/loom/agents/base.py b/loom/agents/base.py
+index 1610f56..1915d3a 100644
+--- a/loom/agents/base.py
++++ b/loom/agents/base.py
+@@ -1,74 +1,74 @@
+-import logging
+-import subprocess
+-import os
+-import json
+-import re
+-from typing import List, Any, Optional
+-
+-logger = logging.getLogger("loom")
+-
+-class AgentProxy:
+-    def _run(self, command: List[str], cwd: str = ".", quiet: bool = False, check: bool = True) -> str:
+-        logger.info(f"Running: {' '.join(command)}")
+-        try:
+-            result = subprocess.run(
+-                command, 
+-                cwd=cwd, 
+-                capture_output=True, 
+-                text=True, 
+-                check=check,
+-                shell=(os.name == 'nt'),
+-                timeout=600 # 10 minute timeout
+-            )
+-            return result.stdout.strip()
+-        except subprocess.CalledProcessError as e:
+-            if not quiet:
+-                logger.error(f"Command failed: {e.stderr or e.stdout}")
+-            else:
+-                logger.debug(f"Command failed (quiet mode): {e.stderr or e.stdout}")
+-            raise
+-        except subprocess.TimeoutExpired:
+-            logger.error("Command timed out!")
+-            raise
+-
+-    def _parse_json(self, text: str) -> Any:
+-        """Robustly extract and parse JSON from LLM response."""
+-        if not text:
+-            raise ValueError("Empty response text")
+-            
+-        # Try stripping markdown blocks first
+-        clean_text = text.strip()
+-        if "```json" in clean_text:
+-            clean_text = clean_text.split("```json")[1].split("```")[0].strip()
+-        elif "```" in clean_text:
+-            clean_text = clean_text.split("```")[1].split("```")[0].strip()
+-            
+-        try:
+-            return json.loads(clean_text)
+-        except json.JSONDecodeError:
+-            pass
+-            
+-        # Try finding the largest block with regex
+-        match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+-        if match:
+-            try:
+-                return json.loads(match.group(1))
+-            except json.JSONDecodeError:
+-                pass
+-                
+-        raise ValueError("Failed to parse JSON from response")
+-
+-    def _parse_score(self, text: str, tag: str) -> int:
+-        """Robustly extract an integer score associated with a specific tag."""
+-        # 1. Try finding the tag specifically: [TAG]: X or TAG: X
+-        pattern = rf"{re.escape(tag)}[:\s]*(\d+)"
+-        match = re.search(pattern, text, re.IGNORECASE)
+-        if match:
+-            return int(match.group(1))
+-            
+-        # 2. Look for the last number in the text (often the score line)
+-        numbers = re.findall(r'\d+', text)
+-        if numbers:
+-            return int(numbers[-1])
+-            
+-        return 5 # Neutral default
++import logging
++import subprocess
++import os
++import json
++import re
++from typing import List, Any, Optional
++
++logger = logging.getLogger("loom")
++
++class AgentProxy:
++    def _run(self, command: List[str], cwd: str = ".", quiet: bool = False, check: bool = True) -> str:
++        logger.info(f"Running: {' '.join(command)}")
++        try:
++            result = subprocess.run(
++                command, 
++                cwd=cwd, 
++                capture_output=True, 
++                text=True, 
++                check=check,
++                shell=(os.name == 'nt'),
++                timeout=600 # 10 minute timeout
++            )
++            return result.stdout.strip()
++        except subprocess.CalledProcessError as e:
++            if not quiet:
++                logger.error(f"Command failed: {e.stderr or e.stdout}")
++            else:
++                logger.debug(f"Command failed (quiet mode): {e.stderr or e.stdout}")
++            raise
++        except subprocess.TimeoutExpired:
++            logger.error("Command timed out!")
++            raise
++
++    def _parse_json(self, text: str) -> Any:
++        """Robustly extract and parse JSON from LLM response."""
++        if not text:
++            raise ValueError("Empty response text")
++            
++        # Try stripping markdown blocks first
++        clean_text = text.strip()
++        if "```json" in clean_text:
++            clean_text = clean_text.split("```json")[1].split("```")[0].strip()
++        elif "```" in clean_text:
++            clean_text = clean_text.split("```")[1].split("```")[0].strip()
++            
++        try:
++            return json.loads(clean_text)
++        except json.JSONDecodeError:
++            pass
++            
++        # Try finding the largest block with regex
++        match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
++        if match:
++            try:
++                return json.loads(match.group(1))
++            except json.JSONDecodeError:
++                pass
++                
++        raise ValueError("Failed to parse JSON from response")
++
++    def _parse_score(self, text: str, tag: str) -> float:
++        """Robustly extract a floating-point score associated with a specific tag."""
++        # 1. Try finding the tag specifically: [TAG]: X or TAG: X
++        pattern = rf"{re.escape(tag)}[:\s]*(\d+(?:\.\d+)?)"
++        match = re.search(pattern, text, re.IGNORECASE)
++        if match:
++            return float(match.group(1))
++            
++        # 2. Look for the last number in the text (often the score line)
++        numbers = re.findall(r'\d+(?:\.\d+)?', text)
++        if numbers:
++            return float(numbers[-1])
++            
++        return 5.0 # Neutral default
+diff --git a/loom/agents/reflection.py b/loom/agents/reflection.py
+index f7c4a04..5b0d7ae 100644
+--- a/loom/agents/reflection.py
++++ b/loom/agents/reflection.py
+@@ -44,7 +44,7 @@ class ReflectionAgent(AgentProxy): # pylint: disable=too-few-public-methods
+             raise
+ 
+     def reflect_on_task(
+-        self, active_task: BacklogTask, happiness_score: int, last_critique: str, app_meta: str
++        self, active_task: BacklogTask, happiness_score: float, last_critique: str, app_meta: str
+     ) -> str:
+         """
+         Analyzes the outcome of a task and returns a concise learning summary.
+diff --git a/loom/agents/vision.py b/loom/agents/vision.py
+index e5f7abd..7c0dc4e 100644
+--- a/loom/agents/vision.py
++++ b/loom/agents/vision.py
+@@ -171,7 +171,7 @@ class VisionAgent(AgentProxy):
+     # pylint: disable=too-many-arguments, too-many-locals, too-many-positional-arguments
+     def evaluate_happiness(self, app_screenshot: bytes, ref_images: List[bytes],
+                            app_meta: str, inspiration_goal: str, target_route: str,
+-                           console_logs: Optional[List[str]] = None) -> Tuple[int, str]:
++                           console_logs: Optional[List[str]] = None) -> Tuple[float, str]:
+         """Compares the actual running app against the target design reference to score it."""
+         prompt = [
+             f"You are the Overseer. Your goal was to implement: '{inspiration_goal}'.\n",
+@@ -206,8 +206,8 @@ class VisionAgent(AgentProxy):
+             logger.info("Vision Evaluation Critique:\n%s", critique)
+ 
+             score = self._parse_score(critique, "[VISION_SCORE]")
+-            score = max(0, min(10, score))
++            score = max(0.0, min(10.0, score))
+             return score, critique
+         except Exception as e: # pylint: disable=broad-exception-caught
+             logger.error("Vision evaluation failed: %s", e)
+-            return 5, f"Vision evaluation failed: {str(e)}"
++            return 5.0, f"Vision evaluation failed: {str(e)}"
+diff --git a/loom/core/overseer.py b/loom/core/overseer.py
+index 99cfd80..e1d3a39 100644
+--- a/loom/core/overseer.py
++++ b/loom/core/overseer.py
+@@ -67,7 +67,7 @@ class Overseer:
+         # Iteration-specific state
+         self.current_iteration_record = None
+         self.current_brainstorm_output = None
+-        self.happiness_score = 0
++        self.happiness_score = 0.0
+         self.last_critique = ""
+         self.app_screenshot = None
+         self.app_screenshot_path = None
+@@ -170,11 +170,11 @@ class Overseer:
+                 return screenshot, logs
+             return screenshot
+ 
+-    def evaluate_architecture(self, branch_name: str) -> tuple[int, str, list]:
++    def evaluate_architecture(self, branch_name: str) -> tuple[float, str, list]:
+         return self.architect.evaluate(app_meta=self.state.app_meta)
+ 
+-    def evaluate_happiness(self, active_task: BacklogTask, target_route: str = "/") -> tuple[int, str, bytes]:
+-        score = 10 
++    def evaluate_happiness(self, active_task: BacklogTask, target_route: str = "/") -> tuple[float, str, bytes]:
++        score = 10.0 
+         critique = "No critique."
+         app_screenshot = None
+         try:
+@@ -594,7 +594,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
+                 # 3. EXECUTION PHASE
+                 try:
+                     # If happiness was already achieved on this task iteration, skip (resume logic)
+-                    if self.current_iteration_record and self.current_iteration_record.happiness_score >= 8:
++                    if self.current_iteration_record and self.current_iteration_record.happiness_score >= 8.0:
+                         logger.info("Happiness already achieved in this iteration. Skipping Design and Implementation.")
+                         self.happiness_score = self.current_iteration_record.happiness_score
+                         success_branch = self.current_iteration_record.successful_branch or branch_name
+@@ -617,7 +617,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
+                         time.sleep(3600)
+                         continue
+                     logger.error(f"Iteration aborted due to step error: {step_error}")
+-                    self.happiness_score = 0
++                    self.happiness_score = 0.0
+                     self.last_critique = f"Aborted during phase {self.state.current_phase}: {step_error}"
+                     success_branch = branch_name
+ 
+@@ -1414,7 +1414,7 @@ Example output:
+                 self._check_shutdown()
+             except Exception as e:
+                 logger.error(f"Build failed: {e}")
+-                self.happiness_score = 0
++                self.happiness_score = 0.0
+                 self.last_critique = f"Jules run failed: {e}"
+                 self._record_attempt(current_attempt, active_task)
+             finally:
+@@ -1423,14 +1423,14 @@ Example output:
+                 self.state.active_jules_action = None
+                 self.state.save()
+             
+-            if self.happiness_score >= 8: 
++            if self.happiness_score >= 8.0: 
+                 self.current_iteration_record.successful_branch = branch_name
+                 self.state.save()
+                 break
+             current_attempt += 1
+ 
+         # If we failed to reach happiness after all attempts, push the remaining debt to the backlog
+-        if self.happiness_score < 8 and final_refactoring_priorities:
++        if self.happiness_score < 8.0 and final_refactoring_priorities:
+             import uuid
+             from backend.state import TaskPriority, TaskType
+             for p in final_refactoring_priorities:
+@@ -1581,7 +1581,7 @@ CRITICAL RULES:
+         self.state.save()
+         
+         # Reset score/critique for this attempt
+-        self.happiness_score = 0
++        self.happiness_score = 0.0
+         self.last_critique = ""
+         self.app_screenshot = None
+         self.app_screenshot_path = None
+@@ -1592,14 +1592,14 @@ CRITICAL RULES:
+             build_success, build_error = self._run_build()
+             if not build_success:
+                 logger.error(f"Build failed for attempt {attempt}: {build_error}")
+-                self.happiness_score, self.last_critique = 0, f"Build error: {build_error}"
++                self.happiness_score, self.last_critique = 0.0, f"Build error: {build_error}"
+             else:
+                 logger.info("Build successful.")
+                 # Test check
+                 test_success, test_error = self._run_tests(attempt)
+                 if not test_success:
+                     logger.error(f"Tests failed for attempt {attempt}: {test_error}")
+-                    self.happiness_score, self.last_critique = 0, f"Test error: {test_error}"
++                    self.happiness_score, self.last_critique = 0.0, f"Test error: {test_error}"
+                     
+                     # Generate a P0 Bugfix task if not already in a bugfix
+                     if active_task.type != "bugfix":
+@@ -1625,10 +1625,10 @@ CRITICAL RULES:
+                     if active_task.requires_design:
+                         self.happiness_score, self.last_critique, self.app_screenshot = self.evaluate_happiness(active_task, target_route=active_task.target_route)
+                     else:
+-                        self.happiness_score, self.last_critique = 10, "Logic update successful."
++                        self.happiness_score, self.last_critique = 10.0, "Logic update successful."
+                     
+                     # Arch check
+-                    if self.happiness_score >= 8:
++                    if self.happiness_score >= 8.0:
+                         arch_score, arch_critique, refactoring_priorities = self.evaluate_architecture(branch)
+                         if arch_score < 8:
+                             self.happiness_score, self.last_critique = arch_score, f"Visuals good, arch bad: {arch_critique}"
+@@ -1637,7 +1637,7 @@ CRITICAL RULES:
+                         self.current_iteration_record.architectural_critique = arch_critique
+         except Exception as e:
+             logger.error(f"Evaluation crashed: {e}")
+-            self.happiness_score, self.last_critique = 0, f"Evaluation error: {str(e)}"
++            self.happiness_score, self.last_critique = 0.0, f"Evaluation error: {str(e)}"
+ 
+         # ALWAYS Record attempt
+         self._record_attempt(attempt, active_task)
+@@ -1737,7 +1737,7 @@ CRITICAL RULES:
+         self.state.repo_memory["learnings"].append({
+             "iteration": self.state.current_iteration,
+             "goal": active_task.description,
+-            "success": self.happiness_score >= 8,
++            "success": self.happiness_score >= 8.0,
+             "takeaways": learnings
+         })
+         self.state.save()
+@@ -1765,7 +1765,7 @@ CRITICAL RULES:
+ 
+     def _step_decision(self, branch, active_task: BacklogTask):
+         self.state.current_phase = LoomPhase.DECISION.value
+-        if self.happiness_score >= 8:
++        if self.happiness_score >= 8.0:
+             logger.info(f"Happiness achieved on branch {branch}! Merging to main.")
+             self.git.checkout_branch("main")
+             try:
+@@ -1805,7 +1805,7 @@ CRITICAL RULES:
+                 self.git._run(["git", "clean", "-fd"], cwd="app")
+                 
+                 # If we don't have any previous successful iterations, the genesis project failed.
+-                if not any(h.happiness_score >= 8 for h in self.state.history[:-1]):
++                if not any(h.happiness_score >= 8.0 for h in self.state.history[:-1]):
+                     logger.warning("Genesis project failed. Resetting design state to restart 5-5-5 genesis.")
+                     self.state.stitch_project_id = None
+                     self.state.stitch_screen_id = None

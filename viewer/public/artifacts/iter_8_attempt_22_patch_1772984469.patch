@@ -1,0 +1,705 @@
+diff --git a/app/package-lock.json b/app/package-lock.json
+index 0c96b6f..7f3e756 100644
+--- a/app/package-lock.json
++++ b/app/package-lock.json
+@@ -8,16 +8,18 @@
+       "name": "app",
+       "version": "0.0.0",
+       "dependencies": {
+-        "@tanstack/react-query": "^5.90.21",
++        "@tanstack/react-query": "^4.36.1",
+         "lucide-react": "^0.454.0",
+         "pocketbase": "^0.21.1",
+-        "react": "^19.0.0",
+-        "react-dom": "^19.0.0",
+-        "react-router-dom": "^7.0.0"
++        "react": "^18.2.0",
++        "react-dom": "^18.2.0",
++        "react-router-dom": "^6.22.3"
+       },
+       "devDependencies": {
+         "@playwright/test": "^1.58.2",
+         "@types/node": "^20.11.24",
++        "@types/react": "^18.2.66",
++        "@types/react-dom": "^18.2.22",
+         "@vitejs/plugin-react": "^4.3.0",
+         "autoprefixer": "^10.4.19",
+         "postcss": "^8.4.38",
+@@ -867,6 +869,15 @@
+         "node": ">=18"
+       }
+     },
++    "node_modules/@remix-run/router": {
++      "version": "1.15.3",
++      "resolved": "https://registry.npmjs.org/@remix-run/router/-/router-1.15.3.tgz",
++      "integrity": "sha512-Oy8rmScVrVxWZVOpEF57ovlnhpZ8CCPlnIIumVcV9nFdiSIrus99+Lw78ekXyGvVDlIsFJbSfmSovJUhCWYV3w==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=14.0.0"
++      }
++    },
+     "node_modules/@rolldown/pluginutils": {
+       "version": "1.0.0-beta.27",
+       "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-beta.27.tgz",
+@@ -1225,9 +1236,9 @@
+       ]
+     },
+     "node_modules/@tanstack/query-core": {
+-      "version": "5.90.20",
+-      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.90.20.tgz",
+-      "integrity": "sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==",
++      "version": "4.36.1",
++      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-4.36.1.tgz",
++      "integrity": "sha512-DJSilV5+ytBP1FbFcEJovv4rnnm/CokuVvrBEtW/Va9DvuJ3HksbXUJEpI0aV1KtuL4ZoO9AVE6PyNLzF7tLeA==",
+       "license": "MIT",
+       "funding": {
+         "type": "github",
+@@ -1235,19 +1246,30 @@
+       }
+     },
+     "node_modules/@tanstack/react-query": {
+-      "version": "5.90.21",
+-      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.90.21.tgz",
+-      "integrity": "sha512-0Lu6y5t+tvlTJMTO7oh5NSpJfpg/5D41LlThfepTixPYkJ0sE2Jj0m0f6yYqujBwIXlId87e234+MxG3D3g7kg==",
++      "version": "4.36.1",
++      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-4.36.1.tgz",
++      "integrity": "sha512-y7ySVHFyyQblPl3J3eQBWpXZkliroki3ARnBKsdJchlgt7yJLRDUcf4B8soufgiYt3pEQIkBWBx1N9/ZPIeUWw==",
+       "license": "MIT",
+       "dependencies": {
+-        "@tanstack/query-core": "5.90.20"
++        "@tanstack/query-core": "4.36.1",
++        "use-sync-external-store": "^1.2.0"
+       },
+       "funding": {
+         "type": "github",
+         "url": "https://github.com/sponsors/tannerlinsley"
+       },
+       "peerDependencies": {
+-        "react": "^18 || ^19"
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
++        "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0",
++        "react-native": "*"
++      },
++      "peerDependenciesMeta": {
++        "react-dom": {
++          "optional": true
++        },
++        "react-native": {
++          "optional": true
++        }
+       }
+     },
+     "node_modules/@types/babel__core": {
+@@ -1312,6 +1334,42 @@
+         "undici-types": "~6.21.0"
+       }
+     },
++    "node_modules/@types/prop-types": {
++      "version": "15.7.15",
++      "resolved": "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.15.tgz",
++      "integrity": "sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/react": {
++      "version": "18.2.66",
++      "resolved": "https://registry.npmjs.org/@types/react/-/react-18.2.66.tgz",
++      "integrity": "sha512-OYTmMI4UigXeFMF/j4uv0lBBEbongSgptPrHBxqME44h9+yNov+oL6Z3ocJKo0WyXR84sQUNeyIp9MRfckvZpg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/prop-types": "*",
++        "@types/scheduler": "*",
++        "csstype": "^3.0.2"
++      }
++    },
++    "node_modules/@types/react-dom": {
++      "version": "18.2.22",
++      "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-18.2.22.tgz",
++      "integrity": "sha512-fHkBXPeNtfvri6gdsMYyW+dW7RXFo6Ad09nLFK0VQWR7yGLai/Cyvyj696gbwYvBnhGtevUG9cET0pmUbMtoPQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/react": "*"
++      }
++    },
++    "node_modules/@types/scheduler": {
++      "version": "0.26.0",
++      "resolved": "https://registry.npmjs.org/@types/scheduler/-/scheduler-0.26.0.tgz",
++      "integrity": "sha512-WFHp9YUJQ6CKshqoC37iOlHnQSmxNc795UhB26CyBBttrN9svdIrUjl/NjnNmfcwtncN0h/0PPAFWv9ovP8mLA==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/@vitejs/plugin-react": {
+       "version": "4.7.0",
+       "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-4.7.0.tgz",
+@@ -1557,19 +1615,6 @@
+       "dev": true,
+       "license": "MIT"
+     },
+-    "node_modules/cookie": {
+-      "version": "1.1.1",
+-      "resolved": "https://registry.npmjs.org/cookie/-/cookie-1.1.1.tgz",
+-      "integrity": "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==",
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=18"
+-      },
+-      "funding": {
+-        "type": "opencollective",
+-        "url": "https://opencollective.com/express"
+-      }
+-    },
+     "node_modules/cssesc": {
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
+@@ -1583,6 +1628,13 @@
+         "node": ">=4"
+       }
+     },
++    "node_modules/csstype": {
++      "version": "3.2.3",
++      "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
++      "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/debug": {
+       "version": "4.4.3",
+       "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+@@ -1878,7 +1930,6 @@
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/js-tokens/-/js-tokens-4.0.0.tgz",
+       "integrity": "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/jsesc": {
+@@ -1927,6 +1978,18 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/loose-envify": {
++      "version": "1.4.0",
++      "resolved": "https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz",
++      "integrity": "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==",
++      "license": "MIT",
++      "dependencies": {
++        "js-tokens": "^3.0.0 || ^4.0.0"
++      },
++      "bin": {
++        "loose-envify": "cli.js"
++      }
++    },
+     "node_modules/lru-cache": {
+       "version": "5.1.1",
+       "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-5.1.1.tgz",
+@@ -2315,24 +2378,28 @@
+       "license": "MIT"
+     },
+     "node_modules/react": {
+-      "version": "19.2.4",
+-      "resolved": "https://registry.npmjs.org/react/-/react-19.2.4.tgz",
+-      "integrity": "sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==",
++      "version": "18.2.0",
++      "resolved": "https://registry.npmjs.org/react/-/react-18.2.0.tgz",
++      "integrity": "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==",
+       "license": "MIT",
++      "dependencies": {
++        "loose-envify": "^1.1.0"
++      },
+       "engines": {
+         "node": ">=0.10.0"
+       }
+     },
+     "node_modules/react-dom": {
+-      "version": "19.2.4",
+-      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.4.tgz",
+-      "integrity": "sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ==",
++      "version": "18.2.0",
++      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz",
++      "integrity": "sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==",
+       "license": "MIT",
+       "dependencies": {
+-        "scheduler": "^0.27.0"
++        "loose-envify": "^1.1.0",
++        "scheduler": "^0.23.0"
+       },
+       "peerDependencies": {
+-        "react": "^19.2.4"
++        "react": "^18.2.0"
+       }
+     },
+     "node_modules/react-refresh": {
+@@ -2346,41 +2413,35 @@
+       }
+     },
+     "node_modules/react-router": {
+-      "version": "7.13.1",
+-      "resolved": "https://registry.npmjs.org/react-router/-/react-router-7.13.1.tgz",
+-      "integrity": "sha512-td+xP4X2/6BJvZoX6xw++A2DdEi++YypA69bJUV5oVvqf6/9/9nNlD70YO1e9d3MyamJEBQFEzk6mbfDYbqrSA==",
++      "version": "6.22.3",
++      "resolved": "https://registry.npmjs.org/react-router/-/react-router-6.22.3.tgz",
++      "integrity": "sha512-dr2eb3Mj5zK2YISHK++foM9w4eBnO23eKnZEDs7c880P6oKbrjz/Svg9+nxqtHQK+oMW4OtjZca0RqPglXxguQ==",
+       "license": "MIT",
+       "dependencies": {
+-        "cookie": "^1.0.1",
+-        "set-cookie-parser": "^2.6.0"
++        "@remix-run/router": "1.15.3"
+       },
+       "engines": {
+-        "node": ">=20.0.0"
++        "node": ">=14.0.0"
+       },
+       "peerDependencies": {
+-        "react": ">=18",
+-        "react-dom": ">=18"
+-      },
+-      "peerDependenciesMeta": {
+-        "react-dom": {
+-          "optional": true
+-        }
++        "react": ">=16.8"
+       }
+     },
+     "node_modules/react-router-dom": {
+-      "version": "7.13.1",
+-      "resolved": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-7.13.1.tgz",
+-      "integrity": "sha512-UJnV3Rxc5TgUPJt2KJpo1Jpy0OKQr0AjgbZzBFjaPJcFOb2Y8jA5H3LT8HUJAiRLlWrEXWHbF1Z4SCZaQjWDHw==",
++      "version": "6.22.3",
++      "resolved": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-6.22.3.tgz",
++      "integrity": "sha512-7ZILI7HjcE+p31oQvwbokjk6OA/bnFxrhJ19n82Ex9Ph8fNAq+Hm/7KchpMGlTgWhUxRHMMCut+vEtNpWpowKw==",
+       "license": "MIT",
+       "dependencies": {
+-        "react-router": "7.13.1"
++        "@remix-run/router": "1.15.3",
++        "react-router": "6.22.3"
+       },
+       "engines": {
+-        "node": ">=20.0.0"
++        "node": ">=14.0.0"
+       },
+       "peerDependencies": {
+-        "react": ">=18",
+-        "react-dom": ">=18"
++        "react": ">=16.8",
++        "react-dom": ">=16.8"
+       }
+     },
+     "node_modules/read-cache": {
+@@ -2508,10 +2569,13 @@
+       }
+     },
+     "node_modules/scheduler": {
+-      "version": "0.27.0",
+-      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz",
+-      "integrity": "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==",
+-      "license": "MIT"
++      "version": "0.23.2",
++      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.2.tgz",
++      "integrity": "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==",
++      "license": "MIT",
++      "dependencies": {
++        "loose-envify": "^1.1.0"
++      }
+     },
+     "node_modules/semver": {
+       "version": "6.3.1",
+@@ -2523,12 +2587,6 @@
+         "semver": "bin/semver.js"
+       }
+     },
+-    "node_modules/set-cookie-parser": {
+-      "version": "2.7.2",
+-      "resolved": "https://registry.npmjs.org/set-cookie-parser/-/set-cookie-parser-2.7.2.tgz",
+-      "integrity": "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==",
+-      "license": "MIT"
+-    },
+     "node_modules/source-map-js": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+@@ -2705,9 +2763,9 @@
+       "license": "Apache-2.0"
+     },
+     "node_modules/typescript": {
+-      "version": "5.9.3",
+-      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
+-      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
++      "version": "5.2.2",
++      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.2.2.tgz",
++      "integrity": "sha512-mI4WrpHsbCIcwT9cF4FZvr80QUeKvsUsUvKDoR+X/7XHQH98xYD8YHZg7ANtz2GtZt/CBq2QJ0thkGJMHfqc1w==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "bin": {
+@@ -2756,6 +2814,15 @@
+         "browserslist": ">= 4.21.0"
+       }
+     },
++    "node_modules/use-sync-external-store": {
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz",
++      "integrity": "sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==",
++      "license": "MIT",
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
++      }
++    },
+     "node_modules/util-deprecate": {
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+diff --git a/app/package.json b/app/package.json
+index 4deda99..5ff43ff 100644
+--- a/app/package.json
++++ b/app/package.json
+@@ -11,16 +11,18 @@
+     "test:e2e": "playwright test"
+   },
+   "dependencies": {
+-    "@tanstack/react-query": "^5.90.21",
++    "@tanstack/react-query": "^4.36.1",
+     "lucide-react": "^0.454.0",
+     "pocketbase": "^0.21.1",
+-    "react": "^19.0.0",
+-    "react-dom": "^19.0.0",
+-    "react-router-dom": "^7.0.0"
++    "react": "^18.2.0",
++    "react-dom": "^18.2.0",
++    "react-router-dom": "^6.22.3"
+   },
+   "devDependencies": {
+     "@playwright/test": "^1.58.2",
+     "@types/node": "^20.11.24",
++    "@types/react": "^18.2.66",
++    "@types/react-dom": "^18.2.22",
+     "@vitejs/plugin-react": "^4.3.0",
+     "autoprefixer": "^10.4.19",
+     "postcss": "^8.4.38",
+diff --git a/app/src/api/client.ts b/app/src/api/client.ts
+new file mode 100644
+index 0000000..fe64e97
+--- /dev/null
++++ b/app/src/api/client.ts
+@@ -0,0 +1,53 @@
++import PocketBase from 'pocketbase';
++import { TelemetryData } from '../types/telemetry';
++
++export class ApiClient {
++  private pb: PocketBase;
++
++  constructor() {
++    this.pb = new PocketBase(window.location.protocol + "//" + window.location.hostname + ":8090");
++  }
++
++  async fetchTelemetryData(): Promise<TelemetryData> {
++    try {
++      const res = await fetch('http://127.0.0.1:8080/state?_t=' + new Date().getTime());
++      if (res.ok) {
++        const data = await res.json();
++        return {
++          version: data.version || 'v1.1',
++          logs: data.logs || []
++        };
++      }
++    } catch (e) {
++      console.log("Python API failed, falling back to PocketBase...", e);
++    }
++    
++    try {
++      const record = await this.pb.collection('telemetry_state').getFirstListItem('');
++      return {
++        version: record.version,
++        logs: record.logs || []
++      };
++    } catch (pbErr) {
++      console.log("PB fetch failed, trying local proxy...", pbErr);
++    }
++    
++    try {
++      // Fallback for UI visualization offline testing
++      const mockRes = await fetch('/session_state.json', { cache: 'no-store' });
++      if (mockRes.ok) {
++        const MockData = await mockRes.json();
++        return {
++          version: MockData.version || 'v1.1 (Mock Offline)',
++          logs: MockData.logs || []
++        };
++      }
++    } catch (e) {
++      // Ignore
++    }
++
++    throw new Error("Cannot fetch telemetry data. PocketBase collection not found and Python backend unreachable.");
++  }
++}
++
++export const apiClient = new ApiClient();
+diff --git a/app/src/components/dashboard/Header.tsx b/app/src/components/dashboard/Header.tsx
+index 140b519..bea51c5 100644
+--- a/app/src/components/dashboard/Header.tsx
++++ b/app/src/components/dashboard/Header.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++
+ 
+ export default function Header() {
+   return (
+@@ -14,25 +14,25 @@ export default function Header() {
+         <div className="h-8 w-px bg-slate-700"></div>
+         <div className="flex gap-8">
+           <div className="flex flex-col">
+-            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">PY_INTERPRETER</span>
++            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">PYTHON_ORCHESTRATION</span>
+             <div className="flex items-center gap-2">
+-              <span className="font-mono text-neon-green font-bold">3.11.5_ACT</span>
++              <span className="font-mono text-neon-green font-bold">ACT_LOOM_CORE</span>
+               <div className="w-16 h-2 bg-slate-900 brutalist-border overflow-hidden">
+                 <div className="h-full bg-neon-green w-[82%]"></div>
+               </div>
+             </div>
+           </div>
+           <div className="flex flex-col">
+-            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">DOCKER_CONTAINERS</span>
++            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">DOCKER_NODES</span>
+             <div className="flex items-center gap-2">
+-              <span className="font-mono text-primary font-bold">34_ACTIVE</span>
++              <span className="font-mono text-primary font-bold">SYNCED</span>
+               <span className="material-symbols-outlined text-primary text-xs">layers</span>
+             </div>
+           </div>
+           <div className="flex flex-col">
+-            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">REACT_RENDER_TICK</span>
++            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">REACT_VIEWER_UI</span>
+             <div className="flex items-center gap-2">
+-              <span className="font-mono text-neon-amber font-bold">12ms</span>
++              <span className="font-mono text-neon-amber font-bold">12ms TICK</span>
+               <div className="w-16 h-2 bg-slate-900 brutalist-border overflow-hidden">
+                 <div className="h-full bg-neon-amber w-[45%]"></div>
+               </div>
+diff --git a/app/src/components/dashboard/LogViewer.tsx b/app/src/components/dashboard/LogViewer.tsx
+index 9da3273..6ae0c6b 100644
+--- a/app/src/components/dashboard/LogViewer.tsx
++++ b/app/src/components/dashboard/LogViewer.tsx
+@@ -1,13 +1,6 @@
+-import React from 'react';
+ 
+-interface TelemetryLog {
+-  id: string;
+-  timestamp: string;
+-  agent: string;
+-  level: string;
+-  message: string;
+-  metadata?: any;
+-}
++
++import { TelemetryLog } from '../../types/telemetry';
+ 
+ interface LogViewerProps {
+   logs: TelemetryLog[];
+diff --git a/app/src/components/dashboard/Sidebar.tsx b/app/src/components/dashboard/Sidebar.tsx
+index 3ce4d7d..778ea74 100644
+--- a/app/src/components/dashboard/Sidebar.tsx
++++ b/app/src/components/dashboard/Sidebar.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++
+ 
+ interface SidebarProps {
+   showInfo: boolean;
+diff --git a/app/src/components/dashboard/Topology.tsx b/app/src/components/dashboard/Topology.tsx
+index 2028a84..e944e46 100644
+--- a/app/src/components/dashboard/Topology.tsx
++++ b/app/src/components/dashboard/Topology.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++
+ 
+ export default function Topology() {
+   return (
+@@ -60,6 +60,10 @@ export default function Topology() {
+             <span className="material-symbols-outlined text-primary text-xs">info</span>
+             <span className="text-[10px] font-mono text-slate-400">DOCKER_IMAGE_REGEN_QUEUE</span>
+           </div>
++          <div className="flex items-center gap-2 p-2 bg-slate-900/50 border border-slate-800">
++            <span className="material-symbols-outlined text-primary text-xs">settings_suggest</span>
++            <span className="text-[10px] font-mono text-slate-400">PYTHON_RUNTIME_STABLE</span>
++          </div>
+         </div>
+       </div>
+     </aside>
+diff --git a/app/src/hooks/useTelemetry.ts b/app/src/hooks/useTelemetry.ts
+index d75470b..857a68d 100644
+--- a/app/src/hooks/useTelemetry.ts
++++ b/app/src/hooks/useTelemetry.ts
+@@ -1,62 +1,11 @@
+ import { useQuery } from '@tanstack/react-query';
+-import PocketBase from 'pocketbase';
+-
+-export interface TelemetryLog {
+-  id: string;
+-  timestamp: string;
+-  agent: string;
+-  level: string;
+-  message: string;
+-  metadata?: any;
+-}
+-
+-export interface TelemetryData {
+-  version: string;
+-  logs: TelemetryLog[];
+-}
+-
+-const fetchTelemetryData = async (): Promise<TelemetryData> => {
+-  const pb = new PocketBase(window.location.protocol + "//" + window.location.hostname + ":8090");
+-  try {
+-     const record = await pb.collection('telemetry_state').getFirstListItem('');
+-     return {
+-        version: record.version,
+-        logs: record.logs || []
+-     };
+-  } catch(pbErr) {
+-     console.log("PB fetch failed, trying Python backend via 8080 or local proxy...", pbErr);
+-  }
+-
+-  try {
+-      const res = await fetch('http://127.0.0.1:8080/state?_t=' + new Date().getTime()); // Loom Python backend
+-      if (res.ok) {
+-          const data = await res.json();
+-          return {
+-              version: data.version || 'v1.1',
+-              logs: data.logs || []
+-          };
+-      }
+-  } catch(e) {}
+-  
+-  try {
+-      // Fallback for UI visualization offline testing
+-      const mockRes = await fetch('/session_state.json', { cache: 'no-store' });
+-      if (mockRes.ok) {
+-          const MockData = await mockRes.json();
+-          return {
+-              version: MockData.version || 'v1.1 (Mock Offline)',
+-              logs: MockData.logs || []
+-          };
+-      }
+-  } catch(e) {}
+-
+-  throw new Error("Cannot fetch telemetry data. PocketBase collection not found and Python backend unreachable.");
+-};
++import { TelemetryData } from '../types/telemetry';
++import { apiClient } from '../api/client';
+ 
+ export const useTelemetry = () => {
+   return useQuery<TelemetryData, Error>({
+     queryKey: ['telemetry'],
+-    queryFn: fetchTelemetryData,
++    queryFn: () => apiClient.fetchTelemetryData(),
+     refetchInterval: 5000,
+   });
+ };
+diff --git a/app/src/pages/Dashboard.tsx b/app/src/pages/Dashboard.tsx
+index 27c88d9..3ac54ca 100644
+--- a/app/src/pages/Dashboard.tsx
++++ b/app/src/pages/Dashboard.tsx
+@@ -1,4 +1,4 @@
+-import React, { useEffect, useState } from 'react';
++import { useEffect, useState } from 'react';
+ import { useSearchParams } from 'react-router-dom';
+ import Header from '../components/dashboard/Header';
+ import Sidebar from '../components/dashboard/Sidebar';
+@@ -26,7 +26,7 @@ export default function Dashboard() {
+   const { data: telemetryData, error: telemetryError } = useTelemetry();
+   
+   const logs = telemetryData?.logs || [];
+-  const version = telemetryData?.version || '';
++  
+   const error = telemetryError?.message || null;
+ 
+   const handleErrorToggle = () => {
+diff --git a/app/src/pages/Telemetry.tsx b/app/src/pages/Telemetry.tsx
+index 22d2f25..4880d2f 100644
+--- a/app/src/pages/Telemetry.tsx
++++ b/app/src/pages/Telemetry.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++
+ import { useTelemetry } from '../hooks/useTelemetry';
+ 
+ export default function Telemetry() {
+diff --git a/app/src/types/telemetry.ts b/app/src/types/telemetry.ts
+new file mode 100644
+index 0000000..ec0b917
+--- /dev/null
++++ b/app/src/types/telemetry.ts
+@@ -0,0 +1,13 @@
++export interface TelemetryLog {
++  id: string;
++  timestamp: string;
++  agent: string;
++  level: string;
++  message: string;
++  metadata?: any;
++}
++
++export interface TelemetryData {
++  version: string;
++  logs: TelemetryLog[];
++}
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 2d44fd2..0ac3e3b 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -353,6 +353,11 @@ state.save()
+   await expect(page.locator('.bg-slate-panel').first()).toBeVisible({ timeout: 5000 });
+   await expect(page.locator('.brutalist-border').first()).toBeVisible({ timeout: 5000 });
+ 
++  // Verify custom app identity elements for AI Factory
++  await expect(page.locator('text=PYTHON_ORCHESTRATION')).toBeVisible({ timeout: 5000 });
++  await expect(page.locator('text=DOCKER_NODES')).toBeVisible({ timeout: 5000 });
++  await expect(page.locator('text=REACT_VIEWER_UI')).toBeVisible({ timeout: 5000 });
++
+   // Take screenshot as evidence
+   await page.screenshot({ path: 'evidence.png' });
+ });
+diff --git a/app/tsconfig.json b/app/tsconfig.json
+new file mode 100644
+index 0000000..3934b8f
+--- /dev/null
++++ b/app/tsconfig.json
+@@ -0,0 +1,21 @@
++{
++  "compilerOptions": {
++    "target": "ES2020",
++    "useDefineForClassFields": true,
++    "lib": ["ES2020", "DOM", "DOM.Iterable"],
++    "module": "ESNext",
++    "skipLibCheck": true,
++    "moduleResolution": "bundler",
++    "allowImportingTsExtensions": true,
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "noEmit": true,
++    "jsx": "react-jsx",
++    "strict": true,
++    "noUnusedLocals": true,
++    "noUnusedParameters": true,
++    "noFallthroughCasesInSwitch": true
++  },
++  "include": ["src"],
++  "references": [{ "path": "./tsconfig.node.json" }]
++}
+diff --git a/app/tsconfig.node.json b/app/tsconfig.node.json
+new file mode 100644
+index 0000000..70c57e5
+--- /dev/null
++++ b/app/tsconfig.node.json
+@@ -0,0 +1,10 @@
++{
++  "compilerOptions": {
++    "composite": true,
++    "skipLibCheck": true,
++    "module": "ESNext",
++    "moduleResolution": "bundler",
++    "allowSyntheticDefaultImports": true
++  },
++  "include": ["vite.config.ts", "playwright.config.ts", "tests"]
++}

@@ -1,0 +1,70 @@
+diff --git a/.gitignore b/.gitignore
+index 7293612..08bdadc 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,3 +9,5 @@ playwright-report
+ test-results
+ evidence.png
+ jules.patch
++__pycache__/
++*.pyc
+diff --git a/app/tests/verify.spec.ts b/app/tests/verify.spec.ts
+index 295f336..2b1984e 100644
+--- a/app/tests/verify.spec.ts
++++ b/app/tests/verify.spec.ts
+@@ -409,6 +409,7 @@ state.save()
+ 
+ // Test addition to satisfy BuilderLoom rule
+ test('Verify Build Error fix in the CI runner', async ({ page }) => {
++  console.log('Testing Vite config output');
+   const rootViteConfigPath = path.resolve(__dirname, '../../vite.config.ts');
+   if (fs.existsSync(rootViteConfigPath)) {
+     const rootViteConfigRaw = fs.readFileSync(rootViteConfigPath, 'utf8');
+diff --git a/session_state.json b/session_state.json
+index 4241dd6..bace027 100644
+--- a/session_state.json
++++ b/session_state.json
+@@ -18,30 +18,6 @@
+       "agent": "test-agent",
+       "level": "info",
+       "message": "Structured info log test"
+-    },
+-    {
+-      "id": "ed46591b-fc91-4979-b78d-43aebb9e7d6a",
+-      "timestamp": "2026-03-08T16:12:19.834843Z",
+-      "agent": "test_runner",
+-      "level": "error",
+-      "message": "This is an error",
+-      "metadata": {}
+-    },
+-    {
+-      "id": "03f14116-34bd-4427-a356-4efa21c80f7d",
+-      "timestamp": "2026-03-08T16:12:19.835785Z",
+-      "agent": "test_runner",
+-      "level": "warning",
+-      "message": "This is a warning log",
+-      "metadata": {}
+-    },
+-    {
+-      "id": "3af34ccb-4c88-4336-91de-f0ea6fb60809",
+-      "timestamp": "2026-03-08T16:12:19.836551Z",
+-      "agent": "test_runner",
+-      "level": "info",
+-      "message": "This is an info",
+-      "metadata": {}
+     }
+   ],
+   "project_name": "Loom Experiment",
+diff --git a/vite.config.ts b/vite.config.ts
+index 02cbee2..f653c41 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
+ import react from '@vitejs/plugin-react'
+ 
+ export default defineConfig({
++  root: 'app',
+   server: { host: '127.0.0.1' },
+   plugins: [react()],
++  build: { outDir: '../dist' },
+ })

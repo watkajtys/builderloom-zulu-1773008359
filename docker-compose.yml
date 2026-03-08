@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # The primary instance of Loom (Zulu)
+  loom-main:
+    build: .
+    container_name: zulu-main
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file: .env
+    ports:
+      - "8082:8080"
+    environment:
+      - PB_HOSTNAME=zulu-pocketbase
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+
+  # PocketBase Backend (The "Data Soul")
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: zulu-pocketbase
+    networks:
+      default:
+        aliases:
+          - pocketbase
+    command:
+      - serve
+      - --http=0.0.0.0:8090
+      - --dir=/pb_data
+    volumes:
+      - ./pb_data:/pb_data
+    ports:
+      - "8092:8090"
+    restart: unless-stopped
+
+  # The "Real App" (Live Production View)
+  loom-live:
+    image: nginx:alpine
+    container_name: zulu-live
+    volumes:
+      - ./app/dist:/usr/share/nginx/html
+    ports:
+      - "8083:80"
+    restart: unless-stopped
+    depends_on:
+      - loom-main
