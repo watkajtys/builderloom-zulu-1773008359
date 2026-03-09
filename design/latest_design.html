@@ -2,274 +2,317 @@
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Zulu Telemetry: Stealth Monochrome</title>
+<title>BuilderLoom Zulu - Cyber-Green Matrix</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style type="text/tailwindcss">
-        :root {
-            --stealth-black: #050505;
-            --stealth-dark-grey: #121212;
-            --stealth-grey: #2a2a2a;
-            --stealth-border: #333333;
-            --stealth-accent: #ffffff;
-            --stealth-critical: #FF0000;
-        }
-        @layer utilities {
-            .stealth-grid {
-                background-image: linear-gradient(to right, #111 1px, transparent 1px),
-                                  linear-gradient(to bottom, #111 1px, transparent 1px);
-                background-size: 40px 40px;
-            }
-            .rack-module {
-                @apply relative bg-[var(--stealth-dark-grey)] border border-[var(--stealth-border)] shadow-2xl;
-                clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
-            }
-            .latch-tl { @apply absolute top-0 left-0 w-3 h-3 border-l-2 border-t-2 border-[var(--stealth-border)]; }
-            .latch-tr { @apply absolute top-0 right-0 w-3 h-3 border-r-2 border-t-2 border-[var(--stealth-border)]; }
-            .latch-bl { @apply absolute bottom-0 left-0 w-3 h-3 border-l-2 border-b-2 border-[var(--stealth-border)]; }
-            .latch-br { @apply absolute bottom-0 right-0 w-3 h-3 border-r-2 border-b-2 border-[var(--stealth-border)]; }
-            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: var(--stealth-black); }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--stealth-grey); }
-        }
-    </style>
+    :root {
+        --matrix-bg: #020d08;
+        --matrix-deep: #051a0f;
+        --matrix-forest: #0a2e1c;
+        --matrix-border: #14532d;
+        --matrix-glow: #22c55e;
+        --matrix-text: #4ade80;
+        --matrix-muted: #166534;
+    }
+    body {
+        font-family: 'JetBrains Mono', monospace;
+        background-color: var(--matrix-bg);
+        color: var(--matrix-text);
+    }
+    .matrix-text-glow {
+        text-shadow: 0 0 5px rgba(34, 197, 94, 0.5), 0 0 10px rgba(34, 197, 94, 0.3);
+    }
+    .matrix-border {
+        border-color: var(--matrix-border);
+    }
+    .glass {
+        background: rgba(5, 26, 15, 0.8);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--matrix-border);
+    }
+    .terminal-bg {
+        background: #010804;
+    }
+    .scanline {
+        background: linear-gradient(to bottom, transparent 50%, rgba(34, 197, 94, 0.03) 50%);
+        background-size: 100% 4px;
+        pointer-events: none;
+    }
+    input::placeholder {
+        color: var(--matrix-muted) !important;
+    }
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: var(--matrix-bg);
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--matrix-forest);
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--matrix-border);
+    }
+</style>
 <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "stealth-bg": "#050505",
-                        "critical": "#FF0000"
-                    },
-                    fontFamily: {
-                        "display": ["Saira Condensed", "sans-serif"],
-                        "mono": ["IBM Plex Mono", "monospace"]
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#22c55e",
+                    "background-dark": "#020d08",
+                    "slate-custom": {
+                        "800": "#051a0f",
+                        "900": "#020d08",
+                        "950": "#010804"
                     }
                 },
+                fontFamily: {
+                    "display": ["JetBrains Mono", "monospace"],
+                    "mono": ["JetBrains Mono", "monospace"]
+                }
             },
-        }
-    </script>
+        },
+    }
+</script>
 </head>
-<body class="bg-stealth-bg text-white font-display min-h-screen overflow-hidden antialiased">
-<div class="flex flex-col h-screen w-full border-4 border-[var(--stealth-black)]">
-<header class="h-16 bg-[var(--stealth-black)] border-b border-[var(--stealth-border)] flex items-center justify-between px-8 z-50">
-<div class="flex items-center gap-10">
-<div class="flex items-center gap-4">
-<div class="size-10 border border-white flex items-center justify-center">
-<span class="material-symbols-outlined text-white text-2xl">radar</span>
+<body class="bg-background-dark text-[var(--matrix-text)] font-mono selection:bg-primary/30 relative">
+<div class="fixed inset-0 scanline z-50 pointer-events-none"></div>
+<div class="flex h-screen overflow-hidden relative z-10">
+<aside class="w-64 border-r border-[var(--matrix-border)] flex flex-col bg-[var(--matrix-bg)]">
+<div class="p-6 flex items-center gap-3">
+<div class="size-8 bg-primary rounded-sm flex items-center justify-center text-black shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">deployed_code</span>
 </div>
 <div>
-<h1 class="text-xl font-bold tracking-[0.2em] uppercase leading-none">Zulu Telemetry</h1>
-<p class="text-[10px] font-mono text-zinc-500 mt-1 uppercase tracking-widest">Variant 5: Stealth Monochrome</p>
+<h1 class="font-bold text-sm tracking-tight matrix-text-glow">BuilderLoom Zulu</h1>
+<p class="text-[10px] text-[var(--matrix-muted)] uppercase tracking-widest font-bold">AI Factory</p>
 </div>
 </div>
-<nav class="hidden md:flex items-center gap-1">
-<button class="px-6 py-2 text-xs font-bold bg-white text-black uppercase tracking-tighter">Rack_Main</button>
-<button class="px-6 py-2 text-xs font-bold text-zinc-500 hover:text-white border border-transparent hover:border-zinc-700 transition-colors uppercase tracking-tighter">Comm_Link</button>
-<button class="px-6 py-2 text-xs font-bold text-zinc-500 hover:text-white border border-transparent hover:border-zinc-700 transition-colors uppercase tracking-tighter">Neural_Map</button>
+<nav class="flex-1 px-4 space-y-1">
+<div class="text-[10px] font-bold text-[var(--matrix-muted)] uppercase px-3 py-4 tracking-wider">Engineering</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm bg-primary/20 text-primary border border-primary/40 group" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="text-sm font-medium">Telemetry</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm text-[var(--matrix-text)]/70 hover:bg-forest/20 hover:text-primary transition-all border border-transparent hover:border-[var(--matrix-border)] group" href="#">
+<span class="material-symbols-outlined text-[20px]">monitor_heart</span>
+<span class="text-sm font-medium">System Health</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm text-[var(--matrix-text)]/70 hover:bg-forest/20 hover:text-primary transition-all border border-transparent hover:border-[var(--matrix-border)] group" href="#">
+<span class="material-symbols-outlined text-[20px]">view_kanban</span>
+<span class="text-sm font-medium">Kanban</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm text-[var(--matrix-text)]/70 hover:bg-forest/20 hover:text-primary transition-all border border-transparent hover:border-[var(--matrix-border)] group" href="#">
+<span class="material-symbols-outlined text-[20px]">map</span>
+<span class="text-sm font-medium">Roadmap</span>
+</a>
+<div class="text-[10px] font-bold text-[var(--matrix-muted)] uppercase px-3 py-4 tracking-wider">Infrastructure</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm text-[var(--matrix-text)]/70 hover:bg-forest/20 hover:text-primary transition-all border border-transparent hover:border-[var(--matrix-border)]" href="#">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span class="text-sm font-medium">Datasets</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-sm text-[var(--matrix-text)]/70 hover:bg-forest/20 hover:text-primary transition-all border border-transparent hover:border-[var(--matrix-border)]" href="#">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+<span class="text-sm font-medium">Model Zoo</span>
+</a>
+</nav>
+<div class="p-4 border-t border-[var(--matrix-border)]">
+<div class="flex items-center gap-3 p-2 rounded-sm bg-[var(--matrix-deep)] border border-[var(--matrix-border)]">
+<div class="size-8 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary text-sm">bolt</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-bold truncate">V3 Optimizer Active</p>
+<p class="text-[10px] text-[var(--matrix-muted)]">Efficiency: 88.4%</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--matrix-deep)]">
+<header class="h-16 border-b border-[var(--matrix-border)] flex items-center justify-between px-8 bg-[var(--matrix-bg)]">
+<div class="flex items-center gap-4">
+<nav class="flex items-center text-sm font-medium text-[var(--matrix-muted)]">
+<span class="hover:text-primary cursor-pointer">Projects</span>
+<span class="material-symbols-outlined text-sm mx-2">chevron_right</span>
+<span class="text-[var(--matrix-text)] font-bold matrix-text-glow underline underline-offset-4">Zulu-Core-Main</span>
 </nav>
 </div>
-<div class="flex items-center gap-8 font-mono">
-<div class="flex flex-col items-end">
-<span class="text-[9px] text-zinc-500 tracking-widest">ENCRYPT_LEVEL</span>
-<span class="text-xs text-white">AES-256_ZULU</span>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-[var(--matrix-text)]/60 hover:text-primary cursor-pointer transition-colors">notifications</span>
+<span class="absolute top-0 right-0 size-2 bg-primary rounded-full border-2 border-[var(--matrix-bg)]"></span>
 </div>
-<div class="h-10 w-px bg-zinc-800"></div>
-<div class="flex gap-3">
-<button class="size-10 flex items-center justify-center border border-zinc-800 hover:bg-zinc-900 transition-colors"><span class="material-symbols-outlined text-lg">filter_center_focus</span></button>
-<div class="size-10 border border-zinc-700 p-0.5">
-<img alt="User" class="w-full h-full object-cover grayscale brightness-75 contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMawustMTAFw5qCaos7S2J3HNwnU77hVdwZ9dLFwapzHjfpU9ndDUhULnESNt8NhHyGiN_skTL4yI4R6X8I_ToaW-54GMPWpPF-PJnJW0HNsZOatMertt-SF1bJmoMsECj6eI0fp1f77FWmtlDbVmz25vqIeAjxIOBTiPbv3pXZFDhhPo07kBghc1A-tCZ9Lo8az_ttvbcSXUOCORqzCJE6A1M0c6MpJRsH04tXKGg60DqUXNZQHSk0Ld7mMScbckA10ctrzrGfwQ"/>
+<div class="h-8 w-px bg-[var(--matrix-border)]"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold leading-none">Alex Rivera</p>
+<p class="text-[10px] text-[var(--matrix-muted)] font-bold uppercase">Arch_Node_01</p>
+</div>
+<div class="size-9 rounded-sm bg-[var(--matrix-forest)] overflow-hidden ring-1 ring-[var(--matrix-border)] grayscale brightness-125 contrast-125">
+<img alt="User Profile" data-alt="Stylized avatar of a professional developer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCivPXu8qTJgNdVWWOE_66wNhfMfcnwKf-m6j92HuXGwiSfSNlc88afJU_OS7_JG4AZsNXoJ5nOtyONDJAjF4JZ8X7PdKU0tWi6KeA7PRkMrw6hBhaFVK7mvWd_LooBCTofVkb_sAEZeFBGZRRA8eelUWk__YdTn4F030Pz3_Uj4QhVXGf9dVL2CxzaEzNZa_OOA21mXOkU7EZhlK2VdbeIhxNYJmtEQ93xN2k5f5_LBaQW2OBlV1SzRFrb7hHXzxkUjhiJlLr5hQdJ"/>
 </div>
 </div>
 </div>
 </header>
-<main class="flex-1 stealth-grid p-8 overflow-y-auto custom-scrollbar">
-<div class="grid grid-cols-12 auto-rows-[180px] gap-8 max-w-[1800px] mx-auto">
-<section class="col-span-12 md:col-span-4 row-span-2 rack-module flex flex-col group">
-<div class="latch-tl"></div><div class="latch-tr"></div><div class="latch-bl"></div><div class="latch-br"></div>
-<div class="bg-[var(--stealth-black)] border-b border-[var(--stealth-border)] px-5 py-3 flex items-center justify-between">
-<span class="text-[11px] font-bold font-mono tracking-[0.2em] text-zinc-400 uppercase">Unit-01 // Sys_Integrity</span>
-<span class="text-[9px] font-mono text-zinc-600">MOD_88</span>
+<div class="flex-1 overflow-y-auto p-8">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-[var(--matrix-text)] matrix-text-glow">Telemetry Console</h2>
+<p class="text-[var(--matrix-muted)] mt-1 font-medium">Accessing real-time execution pipelines...</p>
 </div>
-<div class="p-6 flex-1 space-y-6">
-<div class="space-y-3">
-<div class="flex justify-between text-[10px] font-mono text-zinc-400 uppercase tracking-widest">
-<span>Signal Amplitude</span>
-<span class="text-white">89.4%</span>
-</div>
-<div class="h-1.5 bg-zinc-900">
-<div class="h-full bg-white w-[89.4%]"></div>
+<div class="flex gap-2">
+<button class="bg-[var(--matrix-bg)] border border-[var(--matrix-border)] px-4 py-2 rounded-sm text-sm font-bold flex items-center gap-2 hover:bg-[var(--matrix-forest)] transition-colors">
+<span class="material-symbols-outlined text-sm">download</span> Export_Raw
+                        </button>
+<button class="bg-primary text-black px-4 py-2 rounded-sm text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/40 transition-all hover:brightness-110 active:scale-95">
+<span class="material-symbols-outlined text-sm">play_arrow</span> Resume_Proc
+                        </button>
 </div>
 </div>
-<div class="grid grid-cols-2 gap-6">
-<div class="border-l border-zinc-800 pl-4 py-2">
-<span class="text-[10px] text-zinc-500 block uppercase font-mono mb-1">Cyc_Load</span>
-<span class="text-2xl font-mono text-white">4,012</span>
+<div class="grid grid-cols-12 gap-6 h-full min-h-[600px]">
+<div class="col-span-12 lg:col-span-8 flex flex-col bg-black rounded-sm overflow-hidden border border-[var(--matrix-border)] shadow-2xl">
+<div class="h-10 border-b border-[var(--matrix-border)] bg-[var(--matrix-bg)] flex items-center justify-between px-4">
+<div class="flex gap-2 items-center">
+<div class="flex gap-1.5 px-2">
+<div class="size-2 bg-[var(--matrix-muted)] rounded-full"></div>
+<div class="size-2 bg-[var(--matrix-muted)] rounded-full"></div>
+<div class="size-2 bg-primary rounded-full shadow-[0_0_5px_rgba(34,197,94,0.8)]"></div>
 </div>
-<div class="border-l border-zinc-800 pl-4 py-2">
-<span class="text-[10px] text-zinc-500 block uppercase font-mono mb-1">Threads</span>
-<span class="text-2xl font-mono text-white">128</span>
-</div>
-</div>
-<div class="pt-2">
-<div class="h-16 flex items-end gap-[2px]">
-<div class="flex-1 bg-zinc-800 h-[40%]"></div>
-<div class="flex-1 bg-zinc-800 h-[60%]"></div>
-<div class="flex-1 bg-zinc-800 h-[30%]"></div>
-<div class="flex-1 bg-white h-[90%]"></div>
-<div class="flex-1 bg-zinc-800 h-[50%]"></div>
-<div class="flex-1 bg-zinc-800 h-[70%]"></div>
-<div class="flex-1 bg-zinc-800 h-[45%]"></div>
-<div class="flex-1 bg-zinc-800 h-[80%]"></div>
-<div class="flex-1 bg-zinc-800 h-[35%]"></div>
-<div class="flex-1 bg-zinc-800 h-[60%]"></div>
-</div>
-</div>
-</div>
-</section>
-<section class="col-span-12 md:col-span-8 row-span-3 rack-module flex flex-col bg-black">
-<div class="latch-tl"></div><div class="latch-tr"></div><div class="latch-bl"></div><div class="latch-br"></div>
-<div class="bg-[var(--stealth-black)] border-b border-[var(--stealth-border)] px-5 py-3 flex items-center justify-between">
+<div class="h-6 w-px bg-[var(--matrix-border)] mx-2"></div>
 <div class="flex items-center gap-4">
-<span class="size-2 bg-white"></span>
-<span class="text-[11px] font-bold font-mono tracking-[0.2em] text-zinc-400 uppercase">Unit-02 // Tactical_Comms</span>
-</div>
-<div class="flex gap-6 items-center">
-<span class="text-[9px] font-mono text-zinc-600 uppercase">Secure_Feed_Active</span>
-<span class="material-symbols-outlined text-sm text-zinc-600">settings_overscan</span>
+<button class="text-[11px] font-bold text-primary uppercase tracking-wider border-b border-primary pb-1 mt-1">Std_Out</button>
+<button class="text-[11px] font-bold text-[var(--matrix-muted)] uppercase tracking-wider hover:text-primary transition-colors">Python</button>
+<button class="text-[11px] font-bold text-[var(--matrix-muted)] uppercase tracking-wider hover:text-primary transition-colors">Docker</button>
 </div>
 </div>
-<div class="flex-1 overflow-y-auto p-6 font-mono text-[11px] leading-relaxed custom-scrollbar bg-[var(--stealth-black)]">
-<div class="space-y-2 opacity-80">
-<p><span class="text-zinc-600">14:40:01</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> Initialization sequence authorized. Stealth protocols active.</p>
-<p><span class="text-zinc-600">14:40:05</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> Primary uplink established via <span class="text-white underline underline-offset-4 decoration-zinc-700">OSIRIS-9</span></p>
-<p class="text-critical font-bold flex items-center gap-2">
-<span class="text-zinc-600 font-normal">14:40:12</span>
-<span class="bg-critical text-white px-1">CRIT</span> 
-                            UNAUTHORIZED ACCESS ATTEMPT: SECTOR_07 - AUTOMATIC LOCKDOWN ENGAGED
-                        </p>
-<p><span class="text-zinc-600">14:40:15</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> Threat neutralized. Counter-measures deployed successfully.</p>
-<p><span class="text-zinc-600">14:40:18</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> Purging temporary data registers...</p>
-<p><span class="text-zinc-600">14:40:22</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> Syncing neural weights with local factory node.</p>
-<p><span class="text-zinc-600">14:40:28</span> <span class="bg-zinc-800 px-1 text-zinc-300">INFO</span> System temperature: 24Â°C. Operational status: NOMINAL.</p>
-<p class="pt-4 flex items-center gap-2">
-<span class="text-zinc-600">14:40:35</span>
-<span class="text-white animate-pulse">_</span>
-<span class="text-zinc-400">WAITING_FOR_COMMAND_INPUT...</span>
-</p>
+<div class="flex items-center gap-2 text-[var(--matrix-muted)]">
+<span class="material-symbols-outlined text-sm cursor-pointer hover:text-primary">search</span>
+<span class="material-symbols-outlined text-sm cursor-pointer hover:text-primary">terminal</span>
 </div>
 </div>
-<div class="bg-[var(--stealth-black)] border-t border-zinc-900 p-4 flex items-center gap-4">
-<span class="text-white font-mono text-[10px] font-bold border-r border-zinc-800 pr-4 uppercase tracking-tighter">Command</span>
-<input class="bg-transparent border-none text-[11px] font-mono text-white focus:ring-0 w-full placeholder-zinc-700 uppercase" placeholder="Enter secure directive..." type="text"/>
+<div class="flex-1 p-6 font-mono text-[13px] leading-relaxed overflow-y-auto terminal-bg text-[var(--matrix-text)]">
+<div class="mb-1 opacity-60"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:01]</span> <span class="text-primary font-bold">INFO:</span> Initializing Python 3.11 factory-runtime environment...</div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:03]</span> <span class="text-primary font-bold">INFO:</span> Successfully pulled image 'zulu-worker-v2.1'</div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:05]</span> <span class="text-primary font-bold">DOCKER:</span> Container 'zulu-core' started with ID a8f9c2d1e...</div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:06]</span> <span class="text-primary font-bold">INFO:</span> Establishing GPU-accelerated bridge... <span class="matrix-text-glow font-bold">[READY]</span></div>
+<div class="mb-1 text-primary brightness-150"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:08]</span> <span class="font-bold underline">WARN:</span> Memory overhead exceeding 85% on node-04</div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:10]</span> <span class="text-primary font-bold">INFO:</span> Worker assigned to task: "REINFORCEMENT_LAYER_OPTIMIZATION"</div>
+<div class="mb-1 text-primary/80"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:12]</span> &gt;&gt;&gt; import torch; print(torch.cuda.is_available())</div>
+<div class="mb-1 matrix-text-glow"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:12]</span> True</div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:15]</span> <span class="text-primary font-bold">DOCKER:</span> Mounting volume /data/training_sets ... <span class="font-bold">OK</span></div>
+<div class="mb-1"><span class="text-[var(--matrix-muted)]">[2023-10-27 14:12:18]</span> <span class="text-primary font-bold">INFO:</span> Epoch 42/100 starting... <span class="inline-block w-2 h-4 bg-primary ml-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span></div>
 </div>
-</section>
-<section class="col-span-12 md:col-span-4 row-span-3 rack-module flex flex-col">
-<div class="latch-tl"></div><div class="latch-tr"></div><div class="latch-bl"></div><div class="latch-br"></div>
-<div class="bg-[var(--stealth-black)] border-b border-[var(--stealth-border)] px-5 py-3 flex items-center justify-between">
-<span class="text-[11px] font-bold font-mono tracking-[0.2em] text-zinc-400 uppercase">Unit-03 // Process_Stack</span>
-<div class="flex gap-1.5">
-<div class="size-1 bg-zinc-700"></div><div class="size-1 bg-zinc-700"></div><div class="size-1 bg-white"></div>
-</div>
-</div>
-<div class="p-6 flex-1 space-y-6 overflow-y-auto custom-scrollbar">
-<div class="space-y-3">
-<div class="flex justify-between items-center"><span class="text-[10px] font-bold text-zinc-500 uppercase font-mono">Buffered</span> <span class="text-[10px] font-mono text-zinc-400">02</span></div>
-<div class="p-4 bg-[var(--stealth-black)] border border-zinc-800 group hover:border-zinc-500 transition-colors">
-<p class="text-xs font-bold text-white tracking-widest uppercase">Encryption_Recalib</p>
-<div class="flex justify-between items-center mt-2">
-<span class="text-[9px] text-zinc-600 font-mono">PRIORITY_02 // #X77</span>
-<span class="text-[9px] text-zinc-400 font-mono">STANDBY</span>
+<div class="h-12 border-t border-[var(--matrix-border)] bg-[var(--matrix-bg)] flex items-center px-4 gap-3">
+<span class="material-symbols-outlined text-primary text-sm">chevron_right</span>
+<input class="bg-transparent border-none text-primary placeholder:text-[var(--matrix-muted)] text-sm focus:ring-0 w-full font-mono outline-none" placeholder="Execute factory instruction..." type="text"/>
 </div>
 </div>
-<div class="p-4 bg-[var(--stealth-black)] border border-zinc-800 group hover:border-zinc-500 transition-colors">
-<p class="text-xs font-bold text-white tracking-widest uppercase">Log_Archive_Sync</p>
-<div class="flex justify-between items-center mt-2">
-<span class="text-[9px] text-zinc-600 font-mono">PRIORITY_04 // #A12</span>
-<span class="text-[9px] text-zinc-400 font-mono">STANDBY</span>
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="glass rounded-sm p-6 relative overflow-hidden group border border-[var(--matrix-border)]">
+<div class="absolute -top-12 -right-12 size-32 bg-primary/10 blur-3xl"></div>
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="text-sm font-bold text-[var(--matrix-muted)] uppercase tracking-widest">Sys_Status</h3>
+<p class="text-2xl font-bold mt-1 matrix-text-glow">RUNNING</p>
+</div>
+<div class="size-10 rounded-sm bg-primary/10 border border-[var(--matrix-border)] flex items-center justify-center">
+<span class="material-symbols-outlined text-primary matrix-text-glow">verified_user</span>
 </div>
 </div>
+<div class="space-y-4">
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold uppercase">
+<span class="text-[var(--matrix-muted)]">CPU_Core_Load</span>
+<span>42.8%</span>
 </div>
-<div class="space-y-3">
-<div class="flex justify-between items-center"><span class="text-[10px] font-bold text-white uppercase font-mono">Executing</span> <span class="text-[10px] font-mono text-white">01</span></div>
-<div class="p-4 border border-white/20 bg-white/5">
-<div class="flex justify-between items-start mb-2">
-<p class="text-xs font-bold text-white uppercase tracking-widest">Self_Improve_88</p>
-<span class="material-symbols-outlined text-[14px] text-white">orbit</span>
+<div class="h-1 bg-[var(--matrix-bg)] border border-[var(--matrix-border)] rounded-none overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_5px_rgba(34,197,94,1)]" style="width: 42.8%"></div>
 </div>
-<span class="text-[9px] text-zinc-500 font-mono block mb-3 uppercase">Status: Recalibrating_Heuristics</span>
-<div class="h-[2px] bg-zinc-900"><div class="h-full bg-white w-2/3"></div></div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold uppercase">
+<span class="text-[var(--matrix-muted)]">Mem_Allocation</span>
+<span>78.2%</span>
+</div>
+<div class="h-1 bg-[var(--matrix-bg)] border border-[var(--matrix-border)] rounded-none overflow-hidden">
+<div class="h-full bg-primary/60" style="width: 78.2%"></div>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold uppercase">
+<span class="text-[var(--matrix-muted)]">GPU_Thermal</span>
+<span>64Â°C</span>
+</div>
+<div class="h-1 bg-[var(--matrix-bg)] border border-[var(--matrix-border)] rounded-none overflow-hidden">
+<div class="h-full bg-primary" style="width: 64%"></div>
 </div>
 </div>
 </div>
-</section>
-<section class="col-span-12 md:col-span-8 row-span-2 rack-module flex flex-col">
-<div class="latch-tl"></div><div class="latch-tr"></div><div class="latch-bl"></div><div class="latch-br"></div>
-<div class="bg-[var(--stealth-black)] border-b border-[var(--stealth-border)] px-5 py-3 flex items-center justify-between">
-<span class="text-[11px] font-bold font-mono tracking-[0.2em] text-zinc-400 uppercase">Unit-04 // Deployment_Cycle</span>
-<span class="text-[9px] font-mono text-zinc-600 uppercase">Archive_Ref: V5.0_ALPHA</span>
+<div class="mt-6 pt-6 border-t border-[var(--matrix-border)]">
+<div class="flex items-center gap-4">
+<div class="flex-1">
+<p class="text-[10px] text-[var(--matrix-muted)] font-bold uppercase mb-2">Active_Nodes</p>
+<div class="flex gap-1">
+<div class="size-6 bg-[var(--matrix-bg)] border border-primary/40 flex items-center justify-center text-[10px] font-bold text-primary">01</div>
+<div class="size-6 bg-[var(--matrix-bg)] border border-primary/40 flex items-center justify-center text-[10px] font-bold text-primary">02</div>
+<div class="size-6 bg-[var(--matrix-bg)] border border-primary/40 flex items-center justify-center text-[10px] font-bold text-primary">03</div>
+<div class="size-6 bg-[var(--matrix-forest)] border border-[var(--matrix-border)] flex items-center justify-center text-[10px] font-bold">+9</div>
 </div>
-<div class="p-10 flex-1 flex flex-col justify-center">
-<div class="relative px-4">
-<div class="absolute top-1/2 left-0 w-full h-[1px] bg-zinc-800 -translate-y-1/2"></div>
-<div class="flex justify-between items-center relative z-10">
-<div class="flex flex-col items-center gap-3">
-<div class="size-3 bg-zinc-400 border border-black outline outline-2 outline-zinc-800"></div>
-<span class="text-[10px] font-mono text-zinc-500 uppercase text-center leading-tight">v4.8<br/><span class="text-white">STABLE</span></span>
 </div>
-<div class="flex flex-col items-center gap-3">
-<div class="size-3 bg-white border border-black outline outline-4 outline-white/20"></div>
-<span class="text-[10px] font-mono text-white uppercase text-center leading-tight font-bold">v5.0<br/>ACTIVE</span>
-</div>
-<div class="flex flex-col items-center gap-3">
-<div class="size-3 bg-zinc-900 border border-zinc-800"></div>
-<span class="text-[10px] font-mono text-zinc-700 uppercase text-center leading-tight">v5.2<br/>STAGED</span>
-</div>
-<div class="flex flex-col items-center gap-3">
-<div class="size-3 bg-zinc-900 border border-zinc-800"></div>
-<span class="text-[10px] font-mono text-zinc-700 uppercase text-center leading-tight">v6.0<br/>DRAFT</span>
+<div class="flex-1 text-right">
+<p class="text-[10px] text-[var(--matrix-muted)] font-bold uppercase mb-1">Latency_Ms</p>
+<p class="text-sm font-bold text-primary matrix-text-glow">14.002</p>
 </div>
 </div>
 </div>
-<div class="mt-12 bg-black border border-zinc-900 p-5">
-<div class="flex items-center justify-between mb-3">
-<h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] font-mono">Iteration_Efficiency</h4>
-<span class="text-[10px] font-mono text-white">92%</span>
 </div>
-<div class="flex gap-1 h-1.5">
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-white"></div>
-<div class="flex-1 bg-zinc-900"></div>
+<div class="bg-[var(--matrix-bg)] border border-[var(--matrix-border)] rounded-sm p-5">
+<h3 class="text-xs font-bold text-[var(--matrix-muted)] uppercase tracking-widest mb-4">Pipeline_Controls</h3>
+<div class="grid grid-cols-2 gap-3">
+<button class="p-3 rounded-sm border border-[var(--matrix-border)] bg-[var(--matrix-deep)] hover:border-primary/50 transition-colors flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-[var(--matrix-muted)] group-hover:text-primary transition-colors">refresh</span>
+<span class="text-[10px] font-bold uppercase">Restart</span>
+</button>
+<button class="p-3 rounded-sm border border-[var(--matrix-border)] bg-[var(--matrix-deep)] hover:border-primary/50 transition-colors flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-[var(--matrix-muted)] group-hover:text-primary transition-colors">delete_sweep</span>
+<span class="text-[10px] font-bold uppercase">Clear</span>
+</button>
+<button class="p-3 rounded-sm border border-[var(--matrix-border)] bg-[var(--matrix-deep)] hover:border-primary/50 transition-colors flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-[var(--matrix-muted)] group-hover:text-primary transition-colors">shield_with_heart</span>
+<span class="text-[10px] font-bold uppercase">Diag</span>
+</button>
+<button class="p-3 rounded-sm border border-[var(--matrix-border)] bg-[var(--matrix-deep)] hover:border-primary/50 transition-colors flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-[var(--matrix-muted)] group-hover:text-primary transition-colors">hub</span>
+<span class="text-[10px] font-bold uppercase">Sync</span>
+</button>
+</div>
+</div>
+<div class="bg-black rounded-sm p-5 border border-[var(--matrix-border)]">
+<div class="flex justify-between items-center mb-4">
+<span class="text-xs font-bold text-[var(--matrix-muted)] uppercase tracking-widest">Throughput_I/O</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/30 font-bold">+2.4%</span>
+</div>
+<div class="h-20 flex items-end gap-1">
+<div class="flex-1 bg-[var(--matrix-muted)] h-[30%]"></div>
+<div class="flex-1 bg-[var(--matrix-muted)] h-[45%]"></div>
+<div class="flex-1 bg-[var(--matrix-muted)] h-[20%]"></div>
+<div class="flex-1 bg-primary/40 h-[60%]"></div>
+<div class="flex-1 bg-primary/60 h-[80%]"></div>
+<div class="flex-1 bg-primary/50 h-[55%]"></div>
+<div class="flex-1 bg-primary/80 h-[90%]"></div>
+<div class="flex-1 bg-primary/40 h-[40%]"></div>
+<div class="flex-1 bg-primary h-[75%] shadow-[0_0_10px_rgba(34,197,94,0.4)]"></div>
 </div>
 </div>
 </div>
-</section>
+</div>
 </div>
 </main>
-<footer class="h-8 bg-[var(--stealth-black)] border-t border-[var(--stealth-border)] flex items-center justify-between px-8 z-50">
-<div class="flex items-center gap-8">
-<div class="flex items-center gap-3">
-<span class="size-1.5 bg-white"></span>
-<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Status: Ghost_Mode_Active</span>
-</div>
-<div class="h-4 w-px bg-zinc-900"></div>
-<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Uplink: Primary_Ghost_Net</span>
-<span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Ping: 04ms</span>
-</div>
-<div class="flex items-center gap-10">
-<span class="text-[10px] font-mono text-zinc-600 uppercase">User: ADMIN_NULL</span>
-<span class="text-[10px] font-mono text-zinc-400 tabular-nums font-bold">14:41:22 UTC_ZULU</span>
-</div>
-</footer>
 </div>
 
 </body></html>
