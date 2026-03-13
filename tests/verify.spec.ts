@@ -38,7 +38,7 @@ test('Core system interface loads status and handles API boundary', async ({ pag
   await expect(page.locator('text=Resource Alloc')).toBeVisible();
 
   // Ensure screenshot is captured
-  await page.screenshot({ path: 'evidence.png', fullPage: true });
+  await page.screenshot({ path: 'evidence_old.png', fullPage: true });
 });
 
 test('Verify that the HTML app loads and displays the main dashboard shell with the required tabs without errors.', async ({ page }) => {
@@ -64,5 +64,5 @@ test('Verify that the HTML app loads and displays the main dashboard shell with 
   await expect(page.getByText('Strategic Roadmap').first()).toBeVisible();
 
   // Test screenshot
-  await page.screenshot({ path: 'evidence.png' });
+  await page.screenshot({ path: 'evidence_old.png' });
 });
