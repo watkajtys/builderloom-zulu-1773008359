@@ -14,10 +14,18 @@ def check_db():
             url = f"http://{host}:{port}/api/collections/kanban_tasks/records"
         except socket.gaierror:
             # We must be running locally where docker isn't running or the domain isn't resolved
-            # PocketBase container port 8090 is mapped to 8092 locally
+            # PocketBase container port 8090 is mapped to 8092 locally, but might just run directly on 8090
             host = '127.0.0.1'
-            port = 8092
+            port = 8090
             url = f"http://{host}:{port}/api/collections/kanban_tasks/records"
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    pass
+            except Exception:
+                # fallback to docker port
+                port = 8092
+                url = f"http://{host}:{port}/api/collections/kanban_tasks/records"
 
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
