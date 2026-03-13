@@ -3,9 +3,10 @@
 > vite --host
 
 
-  VITE v6.4.1  ready in 324 ms
+  VITE v6.4.1  ready in 285 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.0.2:5173/
-10:32:38 PM [vite] (client) page reload playwright-report/index.html
-10:32:38 PM [vite] (client) page reload playwright-report/index.html
+4:29:31 AM [vite] (client) page reload playwright-report/index.html
+4:29:31 AM [vite] (client) page reload playwright-report/index.html
+4:29:50 AM [vite] (client) page reload playwright-report/index.html
