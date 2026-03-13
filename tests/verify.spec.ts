@@ -71,5 +71,5 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   await page.waitForTimeout(1000);
 
   // Take the final screenshot as evidence (ensuring unique name per testing rules)
-  await page.screenshot({ path: 'evidence.png' });
+  await page.screenshot({ path: 'evidence_old.png' });
 });
