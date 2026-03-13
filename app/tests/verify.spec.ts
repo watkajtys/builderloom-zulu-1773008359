@@ -31,10 +31,7 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   const todoColumn = page.locator('div').filter({ hasText: /^To Do$/ }).first().locator('..');
   
   // We need at least 2 tasks to test drag and drop order change
-  // Note: we can't easily script drag and drop purely with Playwright mouse events on standard HTML5 drag and drop sometimes, but dispatchEvent works.
-  
-  // Actually Playwright has a built in dragTo
-  const tasks = page.locator('div[draggable="true"]');
+  const tasks = page.locator('[data-dnd-kit-draggable]');
   await expect(tasks.first()).toBeVisible();
 
   // Drag the last task to the first task
@@ -56,7 +53,7 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   // Wait for tasks to load
   await expect(page.locator('text=Loading tasks...')).not.toBeVisible();
 
-  const tasks = page.locator('div[draggable="true"]');
+  const tasks = page.locator('[data-dnd-kit-draggable]');
   const count = await tasks.count();
   
   if (count > 1) {
@@ -64,7 +61,6 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
     const lastTask = tasks.nth(count - 1);
     const firstTask = tasks.nth(0);
 
-    // HTML5 drag and drop might need custom dispatching if dragTo isn't perfect
     await lastTask.dragTo(firstTask);
   }
 

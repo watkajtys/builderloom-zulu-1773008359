@@ -1,6 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import PocketBase from 'pocketbase';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  DragOverlay,
+  useDroppable
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // API Configuration
 const getApiUrl = () => {
@@ -19,9 +40,75 @@ interface Task {
   order: number;
 }
 
+// Droppable Column Component
+function SortableColumn({ id, children, className }: { id: string, children: React.ReactNode, className: string }) {
+  const { setNodeRef } = useDroppable({
+    id,
+    data: {
+      type: 'Column',
+    },
+  });
+
+  return (
+    <div ref={setNodeRef} className={className} id={id}>
+      {children}
+    </div>
+  );
+}
+
+// Sortable Item Component
+function SortableTask({ task }: { task: Task }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, data: { type: 'Task', task } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      data-dnd-kit-draggable
+      className={`bg-[#111111] p-3 border transition-colors rounded cursor-grab active:cursor-grabbing flex flex-col gap-2 ${
+        task.status === 'in_progress' ? 'border-[#00F2FF]/50 hover:border-[#00F2FF] shadow-[0_0_10px_rgba(0,242,255,0.1)]' : 'border-zinc-800 hover:border-zinc-700'
+      } ${task.status === 'done' ? 'opacity-70' : ''}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-mono font-bold tracking-wider ${task.status === 'in_progress' ? 'text-[#00F2FF]/70' : 'text-zinc-600'} ${task.status === 'done' ? 'line-through' : ''}`}>
+          #{task.id.slice(0, 5).toUpperCase()}
+        </span>
+        <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-widest ${
+          task.order === 0 ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+        }`}>
+          {task.order === 0 ? "P0_CRITICAL" : "P2_NORMAL"}
+        </span>
+      </div>
+      <p className={`text-sm font-medium leading-snug ${task.status === 'done' ? 'text-zinc-500 line-through' : 'text-white'}`}>{task.title}</p>
+      {task.status === 'in_progress' && (
+        <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
+          <div className="h-full bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,1)]" style={{ width: '60%' }}></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function Kanban() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -43,7 +130,10 @@ export default function Kanban() {
 
     pb.collection('kanban_tasks').subscribe<Task>('*', function (e) {
       if (e.action === 'create') {
-        setTasks((prev) => [...prev, e.record].sort((a, b) => a.order - b.order));
+        setTasks((prev) => {
+            if (prev.find(p => p.id === e.record.id)) return prev;
+            return [...prev, e.record].sort((a, b) => a.order - b.order);
+        });
       } else if (e.action === 'update') {
         setTasks((prev) => prev.map((t) => (t.id === e.record.id ? e.record : t)).sort((a, b) => a.order - b.order));
       } else if (e.action === 'delete') {
@@ -60,70 +150,139 @@ export default function Kanban() {
     };
   }, []);
 
-  const getTasksByStatus = (status: Task['status']) => tasks.filter(t => t.status === status);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3, // require a tiny movement before dragging starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    e.dataTransfer.setData('text/plain', id);
-    e.dataTransfer.effectAllowed = 'move';
+  const getTasksByStatus = (status: Task['status']) => tasks.filter(t => t.status === status).sort((a, b) => a.order - b.order);
+  
+  const todoTasks = useMemo(() => getTasksByStatus('todo'), [tasks]);
+  const inProgressTasks = useMemo(() => getTasksByStatus('in_progress'), [tasks]);
+  const doneTasks = useMemo(() => getTasksByStatus('done'), [tasks]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const task = tasks.find(t => t.id === active.id);
+    if (task) setActiveTask(task);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, newStatus: Task['status'], targetId?: string) => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData('text/plain');
-    if (!draggedId) return;
-
-    const draggedTask = tasks.find(t => t.id === draggedId);
-    if (!draggedTask) return;
-
-    // Filter tasks for the new status column
-    let columnTasks = tasks.filter(t => t.status === newStatus).sort((a, b) => a.order - b.order);
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
     
-    // Remove the dragged task from columnTasks if it was already in this column
-    columnTasks = columnTasks.filter(t => t.id !== draggedId);
+    const activeId = active.id;
+    const overId = over.id;
 
-    // Calculate the new index based on destination
-    let newIndex = columnTasks.length;
-    if (targetId) {
-      const targetIndex = columnTasks.findIndex(t => t.id === targetId);
-      if (targetIndex !== -1) {
-        newIndex = targetIndex;
-      }
+    if (activeId === overId) return;
+
+    const isActiveTask = active.data.current?.type === "Task";
+    const isOverTask = over.data.current?.type === "Task";
+
+    if (!isActiveTask) return;
+
+    // Moving a task over another task
+    if (isActiveTask && isOverTask) {
+      setTasks(tasks => {
+        const activeIndex = tasks.findIndex(t => t.id === activeId);
+        const overIndex = tasks.findIndex(t => t.id === overId);
+
+        if (tasks[activeIndex].status !== tasks[overIndex].status) {
+          const updatedTasks = [...tasks];
+          updatedTasks[activeIndex].status = tasks[overIndex].status;
+          return arrayMove(updatedTasks, activeIndex, overIndex);
+        }
+        return tasks;
+      });
     }
 
-    // Insert the dragged task into the calculated position
-    const updatedDraggedTask = { ...draggedTask, status: newStatus };
-    columnTasks.splice(newIndex, 0, updatedDraggedTask);
+    // Moving a task to an empty column
+    const isOverColumn = over.data.current?.type === "Column";
+    if (isActiveTask && isOverColumn) {
+        setTasks(tasks => {
+            const activeIndex = tasks.findIndex(t => t.id === activeId);
+            const updatedTasks = [...tasks];
+            updatedTasks[activeIndex].status = overId as Task['status'];
+            return arrayMove(updatedTasks, activeIndex, activeIndex);
+        });
+    }
+  };
 
-    // Prepare updates using atomic index recalculation based on relative displacement
-    const updatesToMake = columnTasks.map((task, index) => {
-      return { id: task.id, order: index, status: newStatus };
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeTask = tasks.find(t => t.id === activeId);
+    if (!activeTask) return;
+
+    let destinationStatus = activeTask.status;
+    
+    const overTask = tasks.find(t => t.id === overId);
+    if (overTask) {
+        destinationStatus = overTask.status;
+    } else if (['todo', 'in_progress', 'done'].includes(overId)) {
+        destinationStatus = overId as Task['status'];
+    }
+
+    let finalTasksList: Task[] = [];
+    let updatesToSync: Task[] = [];
+    const prevTasksSnapshot = [...tasks];
+
+    // Compute state changes purely
+    setTasks(prevTasks => {
+        let currentTasks = [...prevTasks];
+        
+        const activeIndex = currentTasks.findIndex(t => t.id === activeId);
+        
+        if (overTask && activeId !== overId) {
+            const overIndex = currentTasks.findIndex(t => t.id === overId);
+            currentTasks[activeIndex].status = destinationStatus;
+            currentTasks = arrayMove(currentTasks, activeIndex, overIndex);
+        } else if (!overTask && ['todo', 'in_progress', 'done'].includes(overId)) {
+            currentTasks[activeIndex].status = destinationStatus;
+        }
+
+        // Recalculate orders atomically within the destination column
+        const columnTasks = currentTasks.filter(t => t.status === destinationStatus);
+        
+        // Update the orders locally first for immediate UI responsiveness
+        const updatesToMake: Task[] = columnTasks.map((task, index) => {
+            return { ...task, order: index };
+        });
+
+        // Store updates for external effect
+        updatesToSync = updatesToMake;
+
+        // Apply new orders back to the main list
+        const finalTasks = currentTasks.map(t => {
+            const update = updatesToMake.find(u => u.id === t.id);
+            return update ? update : t;
+        });
+
+        finalTasksList = finalTasks.sort((a,b) => a.order - b.order);
+        return finalTasksList;
     });
 
-    // Update UI immediately for reactive consistency (optimistic update)
-    setTasks(prev => {
-      const newTasks = prev.map(t => {
-        const update = updatesToMake.find(u => u.id === t.id);
-        if (update) return { ...t, ...update };
-        return t;
-      });
-      return newTasks.sort((a, b) => a.order - b.order);
-    });
-
-    // Persist via PocketBase SDK using sequential iteration to prevent db locks
-    for (const update of updatesToMake) {
-      if (update.id === draggedTask.id && (draggedTask.status !== update.status || draggedTask.order !== update.order)) {
-         await pb.collection('kanban_tasks').update(update.id, { status: update.status, order: update.order });
-      } else {
-         const originalTask = tasks.find(t => t.id === update.id);
-         if (originalTask && originalTask.order !== update.order) {
-            await pb.collection('kanban_tasks').update(update.id, { order: update.order });
-         }
-      }
+    // Execute side effects outside of the state updater
+    for (const update of updatesToSync) {
+        const original = prevTasksSnapshot.find(t => t.id === update.id);
+        // Only sync if order or status changed
+        if (original && (original.order !== update.order || original.status !== update.status)) {
+            await pb.collection('kanban_tasks').update(update.id, { 
+                status: update.status, 
+                order: update.order 
+            }).catch(console.error);
+        }
     }
   };
 
@@ -233,84 +392,40 @@ export default function Kanban() {
             {loading ? (
                 <p className="text-zinc-500 font-mono text-sm">Loading tasks...</p>
             ) : (
-                <div className="flex gap-4 min-h-[400px]">
-                    <div 
-                        className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, 'todo')}
-                    >
-                        <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">To Do</h3>
-                        {getTasksByStatus('todo').map(task => (
-                            <div 
-                                key={task.id} 
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, task.id)}
-                                onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'todo', task.id); }}
-                                className="bg-[#111111] p-3 border border-zinc-800 hover:border-zinc-700 transition-colors rounded cursor-grab active:cursor-grabbing flex flex-col gap-2"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-zinc-600 font-mono font-bold tracking-wider">#{task.id.slice(0, 5).toUpperCase()}</span>
-                                    <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-widest ${
-                                        task.order === 0 ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                                    }`}>
-                                        {task.order === 0 ? "P0_CRITICAL" : "P2_NORMAL"}
-                                    </span>
-                                </div>
-                                <p className="text-sm font-medium text-white leading-snug">{task.title}</p>
-                            </div>
-                        ))}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                >
+                    <div className="flex gap-4 min-h-[400px]">
+                        <SortableContext items={todoTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="todo" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">To Do</h3>
+                                {todoTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                            </SortableColumn>
+                        </SortableContext>
+
+                        <SortableContext items={inProgressTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="in_progress" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <h3 className="font-bold text-xs uppercase text-[#00F2FF] mb-4 tracking-wider px-4">In Progress</h3>
+                                {inProgressTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                            </SortableColumn>
+                        </SortableContext>
+
+                        <SortableContext items={doneTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="done" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">Done</h3>
+                                {doneTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                            </SortableColumn>
+                        </SortableContext>
                     </div>
-                    <div 
-                        className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, 'in_progress')}
-                    >
-                        <h3 className="font-bold text-xs uppercase text-[#00F2FF] mb-4 tracking-wider px-4">In Progress</h3>
-                        {getTasksByStatus('in_progress').map(task => (
-                            <div 
-                                key={task.id} 
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, task.id)}
-                                onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'in_progress', task.id); }}
-                                className="bg-[#111111] p-3 border border-[#00F2FF]/50 hover:border-[#00F2FF] transition-colors rounded shadow-[0_0_10px_rgba(0,242,255,0.1)] cursor-grab active:cursor-grabbing flex flex-col gap-2"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-[#00F2FF]/70 font-mono font-bold tracking-wider">#{task.id.slice(0, 5).toUpperCase()}</span>
-                                    <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-widest ${
-                                        task.order === 0 ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                                    }`}>
-                                        {task.order === 0 ? "P0_CRITICAL" : "P2_NORMAL"}
-                                    </span>
-                                </div>
-                                <p className="text-sm font-medium text-white leading-snug">{task.title}</p>
-                                <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
-                                    <div className="h-full bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,1)]" style={{ width: '60%' }}></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div 
-                        className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, 'done')}
-                    >
-                        <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">Done</h3>
-                        {getTasksByStatus('done').map(task => (
-                            <div 
-                                key={task.id} 
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, task.id)}
-                                onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'done', task.id); }}
-                                className="bg-[#111111] p-3 border border-zinc-800 hover:border-zinc-700 transition-colors rounded cursor-grab active:cursor-grabbing opacity-70 flex flex-col gap-2"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-zinc-600 font-mono font-bold tracking-wider line-through">#{task.id.slice(0, 5).toUpperCase()}</span>
-                                </div>
-                                <p className="text-sm font-medium text-zinc-500 line-through leading-snug">{task.title}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+
+                    <DragOverlay>
+                        {activeTask ? <SortableTask task={activeTask} /> : null}
+                    </DragOverlay>
+                </DndContext>
             )}
         </div>
         
