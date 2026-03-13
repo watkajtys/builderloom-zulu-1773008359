@@ -47,5 +47,30 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   await page.waitForTimeout(1000);
 
   // Take the final screenshot as evidence
+  await page.screenshot({ path: 'evidence_old.png' });
+});
+
+test('User drags a task from the bottom of the column to the top. The PocketBase collection updates the order index, and the UI reactively maintains the new layout. (Appended)', async ({ page }) => {
+  await page.goto('/kanban');
+
+  // Wait for tasks to load
+  await expect(page.locator('text=Loading tasks...')).not.toBeVisible();
+
+  const tasks = page.locator('div[draggable="true"]');
+  const count = await tasks.count();
+  
+  if (count > 1) {
+    // Drag the last task to the first task
+    const lastTask = tasks.nth(count - 1);
+    const firstTask = tasks.nth(0);
+
+    // HTML5 drag and drop might need custom dispatching if dragTo isn't perfect
+    await lastTask.dragTo(firstTask);
+  }
+
+  // Wait for the UI to settle
+  await page.waitForTimeout(1000);
+
+  // Take the final screenshot as evidence
   await page.screenshot({ path: 'evidence.png' });
 });

@@ -5,7 +5,7 @@ import PocketBase from 'pocketbase';
 // API Configuration
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
-    return `http://${window.location.hostname}:8090`;
+    return window.location.protocol + "//" + window.location.hostname + ":8090";
   }
   return 'http://zulu-pocketbase:8090'; // User instruction uses zulu-pocketbase
 };
