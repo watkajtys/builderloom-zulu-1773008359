@@ -21,38 +21,15 @@ test('Core system interface loads status and handles API boundary', async ({ pag
   await page.screenshot({ path: 'evidence_old.png', fullPage: true });
 });
 
-test('User drags a task from the bottom of the column to the top. The PocketBase collection updates the order index, and the UI reactively maintains the new layout.', async ({ page }) => {
-  await page.goto('/kanban');
-
-  // Wait for tasks to load
-  await expect(page.locator('text=Loading tasks...')).not.toBeVisible();
-
-  // We find tasks in the To Do column
-  const todoColumn = page.locator('div').filter({ hasText: /^To Do$/ }).first().locator('..');
-  
-  // We need at least 2 tasks to test drag and drop order change
-  const tasks = page.locator('[data-dnd-kit-draggable]');
-  await expect(tasks.first()).toBeVisible();
-
-  // Drag the last task to the first task
-  const lastTask = tasks.last();
-  const firstTask = tasks.first();
-
-  await lastTask.dragTo(firstTask);
-
-  // Wait for the UI to settle
-  await page.waitForTimeout(1000);
-
-  // Take the final screenshot as evidence
-  await page.screenshot({ path: 'evidence_old.png' });
-});
-
 test('User drags a task from the bottom of the column to the top. The PocketBase collection updates the order index, and the UI reactively maintains the new layout. (Appended)', async ({ page }) => {
   await page.goto('/kanban');
 
   // Wait for tasks to load
   await expect(page.locator('text=Loading tasks...')).not.toBeVisible();
 
+  // We find tasks in the Backlog column (used to be To Do)
+  const backlogColumn = page.locator('div').filter({ hasText: /^Backlog$/ }).first().locator('..');
+  
   const tasks = page.locator('[data-dnd-kit-draggable]');
   const count = await tasks.count();
   

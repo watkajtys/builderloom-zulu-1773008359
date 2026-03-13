@@ -28,7 +28,7 @@ const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     return window.location.protocol + "//" + window.location.hostname + ":8090";
   }
-  return 'http://zulu-pocketbase:8090'; // User instruction uses zulu-pocketbase
+  return 'http://localhost:8090';
 };
 
 const pb = new PocketBase(getApiUrl());
@@ -36,7 +36,7 @@ const pb = new PocketBase(getApiUrl());
 interface Task {
   id: string;
   title: string;
-  status: 'todo' | 'in_progress' | 'done';
+  status: 'backlog' | 'analysis' | 'synthesizing' | 'validation';
   order: number;
 }
 
@@ -71,7 +71,11 @@ function SortableTask({ task }: { task: Task }) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : 1,
   };
+
+  const isInProgress = task.status === 'analysis' || task.status === 'synthesizing';
+  const isDone = task.status === 'validation';
 
   return (
     <div
@@ -81,11 +85,12 @@ function SortableTask({ task }: { task: Task }) {
       {...listeners}
       data-dnd-kit-draggable
       className={`bg-[#111111] p-3 border transition-colors rounded cursor-grab active:cursor-grabbing flex flex-col gap-2 ${
-        task.status === 'in_progress' ? 'border-[#00F2FF]/50 hover:border-[#00F2FF] shadow-[0_0_10px_rgba(0,242,255,0.1)]' : 'border-zinc-800 hover:border-zinc-700'
-      } ${task.status === 'done' ? 'opacity-70' : ''}`}
+        isDragging ? 'border-[#00F2FF] shadow-[0_0_20px_rgba(0,242,255,0.3)] scale-105 rotate-1 z-50 relative' : 
+        isInProgress ? 'border-[#00F2FF]/50 hover:border-[#00F2FF] shadow-[0_0_10px_rgba(0,242,255,0.1)]' : 'border-zinc-800 hover:border-zinc-700'
+      } ${isDone && !isDragging ? 'opacity-70' : ''}`}
     >
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-mono font-bold tracking-wider ${task.status === 'in_progress' ? 'text-[#00F2FF]/70' : 'text-zinc-600'} ${task.status === 'done' ? 'line-through' : ''}`}>
+        <span className={`text-[10px] font-mono font-bold tracking-wider ${isInProgress ? 'text-[#00F2FF]/70' : 'text-zinc-600'} ${isDone ? 'line-through' : ''}`}>
           #{task.id.slice(0, 5).toUpperCase()}
         </span>
         <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-widest ${
@@ -94,10 +99,15 @@ function SortableTask({ task }: { task: Task }) {
           {task.order === 0 ? "P0_CRITICAL" : "P2_NORMAL"}
         </span>
       </div>
-      <p className={`text-sm font-medium leading-snug ${task.status === 'done' ? 'text-zinc-500 line-through' : 'text-white'}`}>{task.title}</p>
-      {task.status === 'in_progress' && (
+      <p className={`text-sm font-medium leading-snug ${isDone ? 'text-zinc-500 line-through' : 'text-white'}`}>{task.title}</p>
+      {task.status === 'synthesizing' && (
         <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
           <div className="h-full bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,1)]" style={{ width: '60%' }}></div>
+        </div>
+      )}
+      {task.status === 'analysis' && (
+        <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
+          <div className="h-full bg-[#BC13FE] shadow-[0_0_5px_rgba(188,19,254,0.8)]" style={{ width: '30%' }}></div>
         </div>
       )}
     </div>
@@ -109,6 +119,7 @@ export default function Kanban() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [pbConnected, setPbConnected] = useState(false);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -119,8 +130,10 @@ export default function Kanban() {
           sort: 'order',
         });
         setTasks(records);
+        setPbConnected(true);
       } catch (err) {
         console.error('Failed to load tasks', err);
+        setPbConnected(false);
       } finally {
         setLoading(false);
       }
@@ -129,6 +142,7 @@ export default function Kanban() {
     fetchTasks();
 
     pb.collection('kanban_tasks').subscribe<Task>('*', function (e) {
+      setPbConnected(true);
       if (e.action === 'create') {
         setTasks((prev) => {
             if (prev.find(p => p.id === e.record.id)) return prev;
@@ -143,6 +157,7 @@ export default function Kanban() {
       unsubscribe = unsub;
     }).catch(err => {
       console.warn("Failed to subscribe to real-time events", err);
+      setPbConnected(false);
     });
 
     return () => {
@@ -163,9 +178,10 @@ export default function Kanban() {
 
   const getTasksByStatus = (status: Task['status']) => tasks.filter(t => t.status === status).sort((a, b) => a.order - b.order);
   
-  const todoTasks = useMemo(() => getTasksByStatus('todo'), [tasks]);
-  const inProgressTasks = useMemo(() => getTasksByStatus('in_progress'), [tasks]);
-  const doneTasks = useMemo(() => getTasksByStatus('done'), [tasks]);
+  const backlogTasks = useMemo(() => getTasksByStatus('backlog'), [tasks]);
+  const analysisTasks = useMemo(() => getTasksByStatus('analysis'), [tasks]);
+  const synthesizingTasks = useMemo(() => getTasksByStatus('synthesizing'), [tasks]);
+  const validationTasks = useMemo(() => getTasksByStatus('validation'), [tasks]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -230,7 +246,7 @@ export default function Kanban() {
     const overTask = tasks.find(t => t.id === overId);
     if (overTask) {
         destinationStatus = overTask.status;
-    } else if (['todo', 'in_progress', 'done'].includes(overId)) {
+    } else if (['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
         destinationStatus = overId as Task['status'];
     }
 
@@ -248,7 +264,7 @@ export default function Kanban() {
             const overIndex = currentTasks.findIndex(t => t.id === overId);
             currentTasks[activeIndex].status = destinationStatus;
             currentTasks = arrayMove(currentTasks, activeIndex, overIndex);
-        } else if (!overTask && ['todo', 'in_progress', 'done'].includes(overId)) {
+        } else if (!overTask && ['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
             currentTasks[activeIndex].status = destinationStatus;
         }
 
@@ -306,7 +322,7 @@ export default function Kanban() {
   return (
     <div className="flex h-screen bg-[#050505] text-[#71717a] font-sans relative overflow-hidden z-10">
       <div className="fixed inset-0 pointer-events-none" style={{ background: "linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 4px" }}></div>
-      <aside className="w-64 border-r border-zinc-800 flex flex-col bg-[#050505] z-10 relative">
+      <aside className="w-64 border-r border-zinc-800 flex flex-col bg-[#050505] z-10 relative shrink-0">
           <div className="p-6 flex items-center gap-3">
               <div className="size-8 bg-[#00F2FF] rounded-sm flex items-center justify-center text-black shadow-[0_0_15px_rgba(0,242,255,0.3)]">
                   <span className="material-symbols-outlined text-xl">deployed_code</span>
@@ -399,42 +415,93 @@ export default function Kanban() {
                     onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
                 >
-                    <div className="flex gap-4 min-h-[400px]">
-                        <SortableContext items={todoTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="todo" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
-                                <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">To Do</h3>
-                                {todoTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                    <div className="flex gap-4 min-h-[400px] w-full overflow-x-auto pb-4 pr-64">
+                        <SortableContext items={backlogTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="backlog" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <div className="flex justify-between items-center mb-4 px-4">
+                                  <h3 className="font-bold text-xs uppercase text-zinc-500 tracking-wider">Backlog</h3>
+                                  <span className="text-[10px] font-mono bg-[#111111] border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{backlogTasks.length}</span>
+                                </div>
+                                {backlogTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
 
-                        <SortableContext items={inProgressTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="in_progress" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
-                                <h3 className="font-bold text-xs uppercase text-[#00F2FF] mb-4 tracking-wider px-4">In Progress</h3>
-                                {inProgressTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                        <SortableContext items={analysisTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="analysis" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <div className="flex justify-between items-center mb-4 px-4">
+                                  <h3 className="font-bold text-xs uppercase text-[#BC13FE] tracking-wider drop-shadow-[0_0_5px_rgba(188,19,254,0.5)]">In Analysis</h3>
+                                  <span className="text-[10px] font-mono bg-[#BC13FE]/10 border border-[#BC13FE]/30 text-[#BC13FE] px-1.5 py-0.5 rounded">{analysisTasks.length}</span>
+                                </div>
+                                {analysisTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
 
-                        <SortableContext items={doneTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="done" className="flex-1 bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
-                                <h3 className="font-bold text-xs uppercase text-zinc-500 mb-4 tracking-wider px-4">Done</h3>
-                                {doneTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                        <SortableContext items={synthesizingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="synthesizing" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <div className="flex justify-between items-center mb-4 px-4">
+                                  <h3 className="font-bold text-xs uppercase text-[#00F2FF] tracking-wider drop-shadow-[0_0_5px_rgba(0,242,255,0.5)]">Synthesizing</h3>
+                                  <span className="text-[10px] font-mono bg-[#00F2FF]/10 border border-[#00F2FF]/30 text-[#00F2FF] px-1.5 py-0.5 rounded">{synthesizingTasks.length}</span>
+                                </div>
+                                {synthesizingTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                            </SortableColumn>
+                        </SortableContext>
+
+                        <SortableContext items={validationTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="validation" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                                <div className="flex justify-between items-center mb-4 px-4">
+                                  <h3 className="font-bold text-xs uppercase text-zinc-500 tracking-wider">Validation</h3>
+                                  <span className="text-[10px] font-mono bg-[#111111] border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{validationTasks.length}</span>
+                                </div>
+                                {validationTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
                     </div>
 
                     <DragOverlay>
-                        {activeTask ? <SortableTask task={activeTask} /> : null}
+                        {activeTask ? (
+                          <div className="rotate-3 scale-105 shadow-[0_0_30px_rgba(0,242,255,0.4)] transition-transform duration-200">
+                            <SortableTask task={activeTask} />
+                          </div>
+                        ) : null}
                     </DragOverlay>
                 </DndContext>
             )}
+        </div>
+        
+        {/* Activity Stream Sidebar */}
+        <div className="absolute top-0 right-0 bottom-8 w-64 bg-[#050505] border-l border-zinc-800 hidden xl:flex flex-col z-10 pointer-events-none">
+            <div className="p-4 border-b border-zinc-800">
+                <h3 className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Activity Stream</h3>
+            </div>
+            <div className="flex-1 p-4 overflow-hidden flex flex-col gap-3 opacity-50">
+                {/* Mock activity entries */}
+                <div className="text-[10px] font-mono border-l-2 border-[#00F2FF] pl-2 py-1">
+                    <span className="text-[#00F2FF]">10:42:01</span>
+                    <p className="text-zinc-400 mt-1">SYS_UPDATE: Re-indexed Synthesizing queue.</p>
+                </div>
+                <div className="text-[10px] font-mono border-l-2 border-zinc-700 pl-2 py-1">
+                    <span className="text-zinc-500">10:39:15</span>
+                    <p className="text-zinc-400 mt-1">Task #A8F92 transitioned to In Analysis.</p>
+                </div>
+                <div className="text-[10px] font-mono border-l-2 border-[#BC13FE] pl-2 py-1">
+                    <span className="text-[#BC13FE]">10:15:22</span>
+                    <p className="text-zinc-400 mt-1">MEM_ALLOC: High load detected on node 4.</p>
+                </div>
+                <div className="text-[10px] font-mono border-l-2 border-zinc-700 pl-2 py-1">
+                    <span className="text-zinc-500">09:55:00</span>
+                    <p className="text-zinc-400 mt-1">Task #B38C1 completed validation.</p>
+                </div>
+            </div>
         </div>
         
         {/* Status Bar */}
         <div className="absolute bottom-0 left-0 right-0 h-8 border-t border-zinc-800 bg-[#050505] flex items-center justify-between px-4 text-[10px] font-mono font-bold text-zinc-500 z-20">
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
-                    <div className="size-1.5 rounded-full bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,0.8)]"></div>
-                    <span className="text-[#00F2FF]">POCKETBASE_SYNC: CONNECTED</span>
+                    <div className={`size-1.5 rounded-full ${pbConnected ? 'bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,0.8)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]'}`}></div>
+                    <span className={pbConnected ? 'text-[#00F2FF]' : 'text-red-500'}>
+                        POCKETBASE_SYNC: {pbConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                    </span>
                 </div>
                 <span>|</span>
                 <span>LATENCY: 12ms</span>
