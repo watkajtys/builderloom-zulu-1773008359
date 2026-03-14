@@ -283,13 +283,18 @@ export default function Kanban() {
     // Now perform the async updates
     isUpdatingRef.current = true;
     for (const update of toUpdate) {
-        await pb.collection('kanban_tasks').update(update.id, { 
-            status: update.status, 
-            order: update.order 
-        }).catch(console.error);
+        try {
+            await pb.collection('kanban_tasks').update(update.id, { 
+                status: update.status, 
+                order: update.order 
+            });
+        } catch (err) {
+            console.error(err);
+        }
     }
+    
+    // Slight debounce before allowing real-time events to take over again
     setTimeout(() => { isUpdatingRef.current = false; }, 300);
-    return;
 
 
   };
