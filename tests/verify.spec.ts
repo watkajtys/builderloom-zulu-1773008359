@@ -93,5 +93,5 @@ test('Kanban drag and drop works', async ({ page }) => {
   }
 
   // Ensure screenshot is captured
-  await page.screenshot({ path: 'evidence.png', fullPage: true });
+  await page.screenshot({ path: 'evidence_old.png', fullPage: true });
 });
