@@ -50,7 +50,7 @@ function SortableColumn({ id, children, className }: { id: string, children: Rea
   });
 
   return (
-    <div ref={setNodeRef} className={className} id={id}>
+    <div ref={setNodeRef} className={`${className} droppable-column`} id={id}>
       {children}
     </div>
   );
@@ -84,7 +84,7 @@ function SortableTask({ task }: { task: Task }) {
       {...attributes}
       {...listeners}
       data-dnd-kit-draggable
-      className={`bg-[#111111] p-3 border transition-colors rounded cursor-grab active:cursor-grabbing flex flex-col gap-2 ${
+      className={`draggable-task bg-[#111111] p-3 border transition-colors rounded cursor-grab active:cursor-grabbing flex flex-col gap-2 ${
         isDragging ? 'border-[#00F2FF] shadow-[0_0_20px_rgba(0,242,255,0.3)] scale-105 rotate-1 z-50 relative' : 
         isInProgress ? 'border-[#00F2FF]/50 hover:border-[#00F2FF] shadow-[0_0_10px_rgba(0,242,255,0.1)]' : 'border-zinc-800 hover:border-zinc-700'
       } ${isDone && !isDragging ? 'opacity-70' : ''}`}
