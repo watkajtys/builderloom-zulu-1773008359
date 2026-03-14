@@ -3,9 +3,21 @@
 > vite --host
 
 
-  VITE v6.4.1  ready in 212 ms
+  VITE v6.4.1  ready in 328 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.0.2:5173/
-2:02:18 AM [vite] (client) page reload playwright-report/index.html
-2:06:07 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:23:50 AM [vite] (client) page reload playwright-report/index.html
+2:23:50 AM [vite] (client) page reload playwright-report/index.html
+2:27:40 AM [vite] (client) page reload index.html
+2:28:08 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:28:15 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:28:19 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:28:35 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:28:52 AM [vite] (client) page reload playwright-report/index.html
+2:31:25 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:31:29 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:31:35 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:32:00 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:32:21 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css
+2:32:36 AM [vite] (client) hmr update /src/Kanban.tsx, /src/index.css

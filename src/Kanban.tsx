@@ -26,7 +26,9 @@ import { CSS } from '@dnd-kit/utilities';
 // API Configuration
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
-    return window.location.protocol + "//" + window.location.hostname + ":8092";
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return window.location.protocol + "//" + window.location.hostname + ":8092";
+    }
   }
   return 'http://zulu-pocketbase:8090';
 };
@@ -36,7 +38,7 @@ const pb = new PocketBase(getApiUrl());
 interface Task {
   id: string;
   title: string;
-  status: 'backlog' | 'analysis' | 'synthesizing' | 'validation';
+  status: 'todo' | 'in_progress' | 'done';
   order: number;
 }
 
@@ -74,8 +76,8 @@ function SortableTask({ task }: { task: Task }) {
     zIndex: isDragging ? 50 : 1,
   };
 
-  const isInProgress = task.status === 'analysis' || task.status === 'synthesizing';
-  const isDone = task.status === 'validation';
+  const isInProgress = task.status === 'in_progress';
+  const isDone = task.status === 'done';
 
   return (
     <div
@@ -100,14 +102,9 @@ function SortableTask({ task }: { task: Task }) {
         </span>
       </div>
       <p className={`text-sm font-medium leading-snug ${isDone ? 'text-zinc-500 line-through' : 'text-white'}`}>{task.title}</p>
-      {task.status === 'synthesizing' && (
+      {task.status === 'in_progress' && (
         <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
           <div className="h-full bg-[#00F2FF] shadow-[0_0_5px_rgba(0,242,255,1)]" style={{ width: '60%' }}></div>
-        </div>
-      )}
-      {task.status === 'analysis' && (
-        <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden mt-1">
-          <div className="h-full bg-[#BC13FE] shadow-[0_0_5px_rgba(188,19,254,0.8)]" style={{ width: '30%' }}></div>
         </div>
       )}
     </div>
@@ -180,10 +177,9 @@ export default function Kanban() {
 
   const getTasksByStatus = (status: Task['status']) => tasks.filter(t => t.status === status).sort((a, b) => a.order - b.order);
   
-  const backlogTasks = useMemo(() => getTasksByStatus('backlog'), [tasks]);
-  const analysisTasks = useMemo(() => getTasksByStatus('analysis'), [tasks]);
-  const synthesizingTasks = useMemo(() => getTasksByStatus('synthesizing'), [tasks]);
-  const validationTasks = useMemo(() => getTasksByStatus('validation'), [tasks]);
+  const todoTasks = useMemo(() => getTasksByStatus('todo'), [tasks]);
+  const inProgressTasks = useMemo(() => getTasksByStatus('in_progress'), [tasks]);
+  const doneTasks = useMemo(() => getTasksByStatus('done'), [tasks]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -248,7 +244,7 @@ export default function Kanban() {
     const overTask = tasks.find(t => t.id === overId);
     if (overTask) {
         destinationStatus = overTask.status;
-    } else if (['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
+    } else if (['todo', 'in_progress', 'done'].includes(overId)) {
         destinationStatus = overId as Task['status'];
     }
 
@@ -259,7 +255,7 @@ export default function Kanban() {
         const overIndex = currentTasks.findIndex(t => t.id === overId);
         currentTasks[activeIndex].status = destinationStatus;
         currentTasks = arrayMove(currentTasks, activeIndex, overIndex);
-    } else if (!overTask && ['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
+    } else if (!overTask && ['todo', 'in_progress', 'done'].includes(overId)) {
         currentTasks[activeIndex].status = destinationStatus;
     }
 
@@ -402,43 +398,33 @@ export default function Kanban() {
                     onDragEnd={handleDragEnd}
                 >
                     <div className="flex gap-4 min-h-[400px] w-full overflow-x-auto pb-4 pr-64">
-                        <SortableContext items={backlogTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="backlog" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                        <SortableContext items={todoTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="todo" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
                                 <div className="flex justify-between items-center mb-4 px-4">
-                                  <h3 className="font-bold text-xs uppercase text-zinc-500 tracking-wider">Backlog</h3>
-                                  <span className="text-[10px] font-mono bg-[#111111] border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{backlogTasks.length}</span>
+                                  <h3 className="font-bold text-xs uppercase text-zinc-500 tracking-wider">To Do</h3>
+                                  <span className="text-[10px] font-mono bg-[#111111] border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{todoTasks.length}</span>
                                 </div>
-                                {backlogTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                                {todoTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
 
-                        <SortableContext items={analysisTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="analysis" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                        <SortableContext items={inProgressTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="in_progress" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
                                 <div className="flex justify-between items-center mb-4 px-4">
-                                  <h3 className="font-bold text-xs uppercase text-[#BC13FE] tracking-wider drop-shadow-[0_0_5px_rgba(188,19,254,0.5)]">In Analysis</h3>
-                                  <span className="text-[10px] font-mono bg-[#BC13FE]/10 border border-[#BC13FE]/30 text-[#BC13FE] px-1.5 py-0.5 rounded">{analysisTasks.length}</span>
+                                  <h3 className="font-bold text-xs uppercase text-[#00F2FF] tracking-wider drop-shadow-[0_0_5px_rgba(0,242,255,0.5)]">In Progress</h3>
+                                  <span className="text-[10px] font-mono bg-[#00F2FF]/10 border border-[#00F2FF]/30 text-[#00F2FF] px-1.5 py-0.5 rounded">{inProgressTasks.length}</span>
                                 </div>
-                                {analysisTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                                {inProgressTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
 
-                        <SortableContext items={synthesizingTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="synthesizing" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
+                        <SortableContext items={doneTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            <SortableColumn id="done" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
                                 <div className="flex justify-between items-center mb-4 px-4">
-                                  <h3 className="font-bold text-xs uppercase text-[#00F2FF] tracking-wider drop-shadow-[0_0_5px_rgba(0,242,255,0.5)]">Synthesizing</h3>
-                                  <span className="text-[10px] font-mono bg-[#00F2FF]/10 border border-[#00F2FF]/30 text-[#00F2FF] px-1.5 py-0.5 rounded">{synthesizingTasks.length}</span>
+                                  <h3 className="font-bold text-xs uppercase text-[#BC13FE] tracking-wider drop-shadow-[0_0_5px_rgba(188,19,254,0.5)]">Done</h3>
+                                  <span className="text-[10px] font-mono bg-[#BC13FE]/10 border border-[#BC13FE]/30 text-[#BC13FE] px-1.5 py-0.5 rounded">{doneTasks.length}</span>
                                 </div>
-                                {synthesizingTasks.map(task => <SortableTask key={task.id} task={task} />)}
-                            </SortableColumn>
-                        </SortableContext>
-
-                        <SortableContext items={validationTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                            <SortableColumn id="validation" className="flex-1 min-w-[250px] bg-[#050505] border border-zinc-800 rounded p-4 flex flex-col gap-2 min-h-full">
-                                <div className="flex justify-between items-center mb-4 px-4">
-                                  <h3 className="font-bold text-xs uppercase text-zinc-500 tracking-wider">Validation</h3>
-                                  <span className="text-[10px] font-mono bg-[#111111] border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{validationTasks.length}</span>
-                                </div>
-                                {validationTasks.map(task => <SortableTask key={task.id} task={task} />)}
+                                {doneTasks.map(task => <SortableTask key={task.id} task={task} />)}
                             </SortableColumn>
                         </SortableContext>
                     </div>

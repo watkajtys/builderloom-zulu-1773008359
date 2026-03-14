@@ -33,10 +33,9 @@ migrate((db) => {
         "options": {
           "maxSelect": 1,
           "values": [
-            "backlog",
-            "analysis",
-            "synthesizing",
-            "validation"
+            "todo",
+            "in_progress",
+            "done"
           ]
         }
       },
