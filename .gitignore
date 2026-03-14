@@ -15,8 +15,3 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# PocketBase
-pb_data/
-pocketbase
-*.zip

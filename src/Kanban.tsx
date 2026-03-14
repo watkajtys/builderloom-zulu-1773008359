@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import PocketBase from 'pocketbase';
 import {
@@ -26,9 +26,9 @@ import { CSS } from '@dnd-kit/utilities';
 // API Configuration
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
-    return window.location.protocol + "//" + window.location.hostname + ":8090";
+    return window.location.protocol + "//" + window.location.hostname + ":8092";
   }
-  return 'http://localhost:8090';
+  return 'http://zulu-pocketbase:8090';
 };
 
 const pb = new PocketBase(getApiUrl());
@@ -120,6 +120,7 @@ export default function Kanban() {
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [pbConnected, setPbConnected] = useState(false);
+  const isUpdatingRef = useRef(false);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -143,6 +144,7 @@ export default function Kanban() {
 
     pb.collection('kanban_tasks').subscribe<Task>('*', function (e) {
       setPbConnected(true);
+      if (isUpdatingRef.current) return;
       if (e.action === 'create') {
         setTasks((prev) => {
             if (prev.find(p => p.id === e.record.id)) return prev;
@@ -250,49 +252,32 @@ export default function Kanban() {
         destinationStatus = overId as Task['status'];
     }
 
-    let finalTasksList: Task[] = [];
-    let updatesToSync: Task[] = [];
-    const prevTasksSnapshot = [...tasks];
+    let currentTasks = [...tasks];
+    const activeIndex = currentTasks.findIndex(t => t.id === activeId);
+    
+    if (overTask && activeId !== overId) {
+        const overIndex = currentTasks.findIndex(t => t.id === overId);
+        currentTasks[activeIndex].status = destinationStatus;
+        currentTasks = arrayMove(currentTasks, activeIndex, overIndex);
+    } else if (!overTask && ['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
+        currentTasks[activeIndex].status = destinationStatus;
+    }
 
-    // Compute state changes purely
-    setTasks(prevTasks => {
-        let currentTasks = [...prevTasks];
-        
-        const activeIndex = currentTasks.findIndex(t => t.id === activeId);
-        
-        if (overTask && activeId !== overId) {
-            const overIndex = currentTasks.findIndex(t => t.id === overId);
-            currentTasks[activeIndex].status = destinationStatus;
-            currentTasks = arrayMove(currentTasks, activeIndex, overIndex);
-        } else if (!overTask && ['backlog', 'analysis', 'synthesizing', 'validation'].includes(overId)) {
-            currentTasks[activeIndex].status = destinationStatus;
-        }
-
-        // Recalculate orders atomically within the destination column
-        const columnTasks = currentTasks.filter(t => t.status === destinationStatus);
-        
-        // Update the orders locally first for immediate UI responsiveness
-        const updatesToMake: Task[] = columnTasks.map((task, index) => {
-            return { ...task, order: index };
-        });
-
-        // Store updates for external effect
-        updatesToSync = updatesToMake;
-
-        // Apply new orders back to the main list
-        const finalTasks = currentTasks.map(t => {
-            const update = updatesToMake.find(u => u.id === t.id);
-            return update ? update : t;
-        });
-
-        finalTasksList = finalTasks.sort((a,b) => a.order - b.order);
-        return finalTasksList;
+    const columnTasks = currentTasks.filter(t => t.status === destinationStatus);
+    const updatesToSync: Task[] = columnTasks.map((task, index) => {
+        return { ...task, order: index };
     });
 
-    // Execute side effects outside of the state updater
+    const finalTasks = currentTasks.map(t => {
+        const update = updatesToSync.find(u => u.id === t.id);
+        return update ? update : t;
+    }).sort((a,b) => a.order - b.order);
+
+    setTasks(finalTasks);
+
+    isUpdatingRef.current = true;
     for (const update of updatesToSync) {
-        const original = prevTasksSnapshot.find(t => t.id === update.id);
-        // Only sync if order or status changed
+        const original = tasks.find(t => t.id === update.id);
         if (original && (original.order !== update.order || original.status !== update.status)) {
             await pb.collection('kanban_tasks').update(update.id, { 
                 status: update.status, 
@@ -300,6 +285,7 @@ export default function Kanban() {
             }).catch(console.error);
         }
     }
+    setTimeout(() => { isUpdatingRef.current = false; }, 300);
   };
 
   const renderSidebarItem = (id: string, icon: string, label: string) => {

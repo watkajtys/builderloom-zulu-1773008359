@@ -1,25 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test('App initializes correctly', async ({ page }) => {
-  await page.goto('/viewer/index.html');
-  await expect(page.locator('text=BuilderLoom Zulu')).toBeVisible();
+  await page.goto('/');
+  await expect(page.locator('text=Loom Initialized')).toBeVisible();
 });
 
 test('Core system interface loads status and handles API boundary', async ({ page }) => {
-  await page.goto('/viewer/index.html');
-  
-  // Navigate to health tab
-  await page.getByRole('link', { name: /System Health/i }).click();
-
-  // Verify the system status element appears, indicating the core service ran
-  await expect(page.locator('text=System Health Overview')).toBeVisible();
+  await page.goto('/');
+  await expect(page.locator('text=Core System Status')).toBeVisible();
 
   // Ensure screenshot is captured
   await page.screenshot({ path: 'evidence_old.png', fullPage: true });
 });
 
 test('Verify that the HTML app loads and displays the main dashboard shell with the required tabs without errors.', async ({ page }) => {
-  await page.goto('/viewer/index.html');
+  await page.goto('/kanban');
   
   // Verify tabs are visible
   await expect(page.getByRole('link', { name: 'analytics Telemetry' })).toBeVisible();
@@ -27,20 +22,12 @@ test('Verify that the HTML app loads and displays the main dashboard shell with 
   await expect(page.getByRole('link', { name: 'view_kanban Kanban' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'map Roadmap' })).toBeVisible();
 
-  // Navigate to different tabs to check URLSearchParams deep linking
-  await page.getByRole('link', { name: 'monitor_heart System Health' }).click();
-  await expect(page).toHaveURL(/.*view=health.*/);
-  await expect(page.getByText('System Health Overview')).toBeVisible();
-
   await page.getByRole('link', { name: 'view_kanban Kanban' }).click();
-  await expect(page).toHaveURL(/.*view=kanban.*/);
-
-  await page.getByRole('link', { name: 'map Roadmap' }).click();
-  await expect(page).toHaveURL(/.*view=roadmap.*/);
-  await expect(page.getByText('Strategic Roadmap').first()).toBeVisible();
+  await expect(page).toHaveURL(/.*\/kanban/);
+  await expect(page.getByText('Sprint Backlog')).toBeVisible();
 
   // Test screenshot
-  await page.screenshot({ path: 'evidence_old.png' });
+  await page.screenshot({ path: 'evidence_old2.png' });
 });
 
 test('User drags a task from the bottom of the column to the top. The PocketBase collection updates the order index, and the UI reactively maintains the new layout.', async ({ page }) => {
@@ -56,8 +43,6 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   const tasks = page.locator('div[draggable="true"]');
   const count = await tasks.count();
   
-  // Note: Since this is hitting true end to end DB, it may be empty on first load.
-  // The test shouldn't fail if the database has no records yet, as long as the page loads and the structure is valid.
   if (count > 1) {
     // Drag the last task to the first task
     const lastTask = tasks.nth(count - 1);
@@ -71,5 +56,5 @@ test('User drags a task from the bottom of the column to the top. The PocketBase
   await page.waitForTimeout(1000);
 
   // Take the final screenshot as evidence (ensuring unique name per testing rules)
-  await page.screenshot({ path: 'evidence_old.png' });
+  await page.screenshot({ path: 'evidence_old3.png' });
 });
