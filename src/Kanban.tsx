@@ -269,19 +269,29 @@ export default function Kanban() {
         return update ? update : t;
     }).sort((a,b) => a.order - b.order);
 
-    setTasks(finalTasks);
-
-    isUpdatingRef.current = true;
+    // Calculate updates synchronously OUTSIDE setTasks
+    const toUpdate = [];
     for (const update of updatesToSync) {
         const original = tasks.find(t => t.id === update.id);
         if (original && (original.order !== update.order || original.status !== update.status)) {
-            await pb.collection('kanban_tasks').update(update.id, { 
-                status: update.status, 
-                order: update.order 
-            }).catch(console.error);
+            toUpdate.push(update);
         }
     }
+
+    setTasks(finalTasks);
+    
+    // Now perform the async updates
+    isUpdatingRef.current = true;
+    for (const update of toUpdate) {
+        await pb.collection('kanban_tasks').update(update.id, { 
+            status: update.status, 
+            order: update.order 
+        }).catch(console.error);
+    }
     setTimeout(() => { isUpdatingRef.current = false; }, 300);
+    return;
+
+
   };
 
   const renderSidebarItem = (id: string, icon: string, label: string) => {
